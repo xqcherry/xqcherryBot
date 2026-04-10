@@ -10,6 +10,10 @@ from nonebot_plugin_apscheduler import scheduler
 from nonebot.plugin import PluginMetadata
 from pydantic import BaseModel
 
+class Config(BaseModel):
+    like_data_filename: str = "data/like/like_data.json"
+    like_time: int = 10
+    like_loop: int = 5
 
 __plugin_meta__ = PluginMetadata(
     name="每日点赞",
@@ -22,10 +26,6 @@ __plugin_meta__ = PluginMetadata(
     config=Config
 )
 
-class Config(BaseModel):
-    like_data_filename: str = "data/like/like_data.json"
-    like_time: int = 10
-    like_loop: int = 5
 
 conf = get_plugin_config(Config)
 DB_PATH = Path(conf.like_data_filename)
