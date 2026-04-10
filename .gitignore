@@ -1,0 +1,11 @@
+# 忽略 NapCat 的运行配置、日志和 QQ 数据
+napcat/.config/
+napcat/logs/
+napcat/temp/
+napcat/config
+*.log
+
+# 如果 nonebot 有本地环境配置，也可以忽略
+nonebot/.env
+nonebot/__pycache__/
+*.pyc

@@ -1,0 +1,32 @@
+services:
+  # 协议端：NapCat
+  napcat:
+    image: mlikiowa/napcat-docker:latest
+    container_name: napcat
+    restart: always
+    environment:
+      - TZ=Asia/Shanghai
+    volumes:
+      - ./napcat/config:/app/napcat/config
+      - ./napcat/.config/QQ:/app/.config/QQ
+    ports:
+      - "6099:6099" # WebUI 端口
+    networks:
+      - bot-net
+
+  # 逻辑端：NoneBot
+  nonebot:
+    build: ./nonebot
+    container_name: nonebot
+    restart: always
+    volumes:
+      - ./nonebot/.env:/app/.env
+      - "F:/@@@秦语婷Ovo照片:/app/photos"
+    depends_on:
+      - napcat
+    networks:
+      - bot-net
+
+networks:
+  bot-net:
+    driver: bridge

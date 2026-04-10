@@ -1,0 +1,4 @@
+nonebot2[fastapi,websockets]
+nonebot-adapter-onebot
+nonebot-plugin-apscheduler
+aiohttp
