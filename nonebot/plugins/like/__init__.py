@@ -7,6 +7,7 @@ from nonebot import on_command, get_bot, get_plugin_config, logger
 from nonebot.adapters.onebot.v11 import GROUP, Bot, GroupMessageEvent, PrivateMessageEvent, MessageSegment
 from nonebot.adapters.onebot.v11.exception import ActionFailed
 from nonebot_plugin_apscheduler import scheduler
+from nonebot.plugin import PluginMetadata
 from pydantic import BaseModel
 
 
