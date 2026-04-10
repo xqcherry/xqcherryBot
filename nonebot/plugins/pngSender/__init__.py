@@ -13,7 +13,7 @@ __plugin_meta__ = PluginMetadata(
 )
 
 IMG_PATH = Path("/app/photos") 
-WHITELIST_QQ = {2417185282, 2683361634, 2303866129}
+WHITELIST_QQ = {2417185282, 2303866129}
 VALID_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
 PHOTO_CACHE = []
 
