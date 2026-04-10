@@ -11,10 +11,6 @@ __plugin_meta__ = PluginMetadata(
     description="从 pighub.top 获取随机猪猪图片",
     usage="指令：来张猪猪 / 随机猪猪",
     config=None,
-    extra={
-        "author": "xqcherry",
-        "version": "0.3.0"
-    }
 )
 
 # 基础配置
