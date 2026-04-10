@@ -12,7 +12,7 @@ from pydantic import BaseModel
 
 __plugin_meta__ = PluginMetadata(
     name="每日点赞",
-    description="支持手动点赞与每日定时自动点赞的群聊实用插件",
+    description="支持手动点赞与每日定时自动点赞",
     usage=(
         "1. 赞我 / 赞 @某人 / 赞 QQ号：手动触发名片点赞\n"
         "2. 订阅赞：开启每日早晨 5:00 自动点赞\n"
