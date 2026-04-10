@@ -1,13 +1,18 @@
-import asyncio, re, json
+import asyncio
+import json
+import re
 from pathlib import Path
-from nonebot import on_command, get_bot, get_plugin_config
-from nonebot.adapters.onebot.v11 import GROUP, GroupMessageEvent, MessageSegment
+
+from nonebot import on_command, get_bot, get_plugin_config, logger
+from nonebot.adapters.onebot.v11 import GROUP, Bot, GroupMessageEvent, PrivateMessageEvent, MessageSegment
+from nonebot.adapters.onebot.v11.exception import ActionFailed
 from nonebot_plugin_apscheduler import scheduler
 from pydantic import BaseModel
 
 class Config(BaseModel):
     like_data_filename: str = "data/like/like_data.json"
     like_time: int = 10
+    like_loop: int = 5
 
 conf = get_plugin_config(Config)
 DB_PATH = Path(conf.like_data_filename)
@@ -21,44 +26,89 @@ def save_db(data):
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     DB_PATH.write_text(json.dumps(data, indent=4, ensure_ascii=False), encoding="utf-8")
 
-async def do_like(bot, uid):
+async def do_like(bot: Bot, uid: int)-> tuple[bool, str]:
+    """增加循环点赞和详细错误捕获"""
+    success_count = 0
+    error_info = "unkown_error"
+
     try:
-        await bot.send_like(user_id=int(uid), times=conf.like_time)
-        return True
-    except: return False
+        for _ in range(conf.like_loop):
+            try:
+                await bot.send_like(user_id=uid, times=conf.like_time)
+                success_count += 1
+                await asyncio.sleep(0.8)
+            except ActionFailed as e:
+                error_msg = e.info.get("message", "")
+                if "上限" in error_msg:
+                    if success_count > 0:
+                        return True, f"点赞成功！发送了 {success_count * conf.like_time} 个赞（已达今日上限）"
+                    return False, "今日点赞次数已达上限，明天再来吧~"
+                raise e
+        return True, f"成功发送 {success_count * conf.like_time} 个赞"
+    except ActionFailed as e:
+        msg = e.info.get("message", "次数已达上限或非好友")
+        return success_count > 0, msg
+    except Exception as e:
+        return False, f"点赞失败: {str(e)}"
+            
 
-
-cmd_like = on_command("赞我", aliases={"赞他", "赞她"}, permission=GROUP, block=True)
-cmd_sub = on_command("订阅赞", aliases={"取消订阅赞"}, permission=GROUP, block=True)
+cmd_like = on_command("赞我", aliases={"赞他", "赞她"}, block=True)
+cmd_sub = on_command("订阅赞", aliases={"取消订阅赞"}, block=True)
 
 @cmd_like.handle()
-async def _(bot: Bot, event: GroupMessageEvent):
+async def _(bot: Bot, event: GroupMessageEvent | PrivateMessageEvent):
 
-    target = event.user_id
-    for seg in event.get_message():
-        if seg.type == "at": target = seg.data["qq"]
+    if isinstance(event, PrivateMessageEvent):
+        await cmd_like.finish("点赞功能只能在群聊使用哦！")
     
-    if await do_like(bot, target):
-        await cmd_like.finish(MessageSegment.at(event.user_id) + " 赞好啦！")
-    await cmd_like.finish("点赞失败，可能不是好友或达到上限")
+    target = event.user_id
+    msg_str = event.get_plaintext()
+
+    for seg in event.get_message():
+        if seg.type == "at":
+            target = int(seg.data["qq"])
+            break
+    else:
+        qq_match = re.search(r"[1-9]\d{4,11}", msg_str)
+        if qq_match:
+            target = int(qq_match.group())
+    
+    ok, res = await do_like(bot, target)
+    at_user = MessageSegment.at(event.user_id)
+    await cmd_like.finish(at_user + f" {res}")
 
 @cmd_sub.handle()
-async def _(event: GroupMessageEvent):
+async def _(event: GroupMessageEvent | PrivateMessageEvent):
+
+    if isinstance(event, PrivateMessageEvent):
+        await cmd_sub.finish("订阅功能只能在群聊使用哦！")
+        
     db = get_db()
     uid = str(event.user_id)
 
-    sub = "订阅" in event.get_plaintext()
-    
-    db["users"][uid] = {"follow": sub, "name": event.sender.nickname}
+    is_sub = "取消" not in event.get_event_description() and "取消" not in event.get_plaintext()
+    db.setdefault("users", {})[uid] = {
+        "follow": is_sub, 
+        "nickname": event.sender.nickname
+    }
     save_db(db)
-    await cmd_sub.finish(f"已{'开启' if sub else '关闭'}每日自动点赞！")
+    state = "开启" if is_sub else "关闭"
+    await cmd_sub.finish(f"已为 {event.sender.nickname} {state}每日自动点赞！")
 
 
 @scheduler.scheduled_job("cron", hour=5, id="daily_like")
 async def _():
-    bot = get_bot()
+    try:
+        bot = get_bot()
+    except:
+        from nonebot import get_bots
+        bots = list(get_bots().values())
+        if not bots: return
+        bot = bots[0]
+
     db = get_db()
-    for uid, info in db.get("users", {}).items():
+    users = db.get("users", {})
+    for uid, info in users.items():
         if info.get("follow"):
-            await do_like(bot, uid)
+            await do_like(bot, int(uid))
             await asyncio.sleep(3)
