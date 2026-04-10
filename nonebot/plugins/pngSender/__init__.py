@@ -1,8 +1,9 @@
 import random
 from pathlib import Path
-from nonebot import on_command
+from nonebot import on_command, logger
 from nonebot.adapters.onebot.v11 import MessageSegment, MessageEvent
 from nonebot.plugin import PluginMetadata
+from nonebot_plugin_apscheduler import scheduler
 
 __plugin_meta__ = PluginMetadata(
     name="pngSender",
@@ -11,14 +12,33 @@ __plugin_meta__ = PluginMetadata(
     config=None,
 )
 
-IMG_PATH = Path(/app/photos) 
+IMG_PATH = Path("/app/photos") 
 WHITELIST_QQ = {2417185282, 2683361634, 2303866129}
 VALID_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".webp"}
-PHOTO_CACHE = [
-    f for f in IMG_PATH.iterdir() 
-    if f.is_file() and f.suffix.lower() in VALID_EXTENSIONS
-] if IMG_PATH.exists() else []
+PHOTO_CACHE = []
 
+
+def scan_photos():
+    """扫描磁盘并更新内存索引"""
+    global PHOTO_CACHE
+    if not IMG_PATH.exists():
+        logger.error(f"【pngSender】路径 {IMG_PATH} 不存在，请检查 Docker 挂载！")
+        return
+    
+    new_photos = [
+        f for f in IMG_PATH.rglob("*") 
+        if f.is_file() and f.suffix.lower() in VALID_EXTENSIONS
+    ]
+    PHOTO_CACHE = new_photos
+    logger.info(f"【pngSender】索引更新完成, 共发现 {len(PHOTO_CACHE)} 张照片")
+
+
+@scheduler.scheduled_job("interval", weeks=1)
+async def auto_refresh():
+    scan_photos()
+
+
+scan_photos()
 get_png = on_command("来张美照", aliases={"看看美照"}, priority=5, block=True)
 
 @get_png.handle()
@@ -32,15 +52,10 @@ async def handle_png(event: MessageEvent):
     if not IMG_PATH.exists():
         await get_png.finish("错误：照片库路径不存在")
 
-    if not PHOTO_CACHE:
-        await get_png.finish("照片库空空如也，或者路径配置错误~")
-
     # 3. 随机抽取
     target_photo = random.choice(PHOTO_CACHE)
 
     try:
-        file_path = f"file:///{target_photo.absolute()}"
-        await get_png.send(MessageSegment.image(file_path))
+        await get_png.send(MessageSegment.image(target_photo))
     except Exception as e:
-        print(f"Error sending image: {e}")
         await get_png.finish("喵喵喵，照片跑丢了呢~")
