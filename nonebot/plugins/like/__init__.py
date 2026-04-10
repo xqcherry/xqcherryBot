@@ -74,8 +74,10 @@ async def _(bot: Bot, event: GroupMessageEvent | PrivateMessageEvent):
             target = int(qq_match.group())
     
     ok, res = await do_like(bot, target)
-    at_user = MessageSegment.at(event.user_id)
-    await cmd_like.finish(at_user + f" {res}")
+    if target == event.user_id:
+        await cmd_like.finish(MessageSegment.at(event.user_id) + f" {res}")
+    else:
+        await cmd_like.finish(MessageSegment.at(target) + f" {res}")
 
 @cmd_sub.handle()
 async def _(event: GroupMessageEvent | PrivateMessageEvent):
