@@ -9,3 +9,4 @@ napcat/config
 nonebot/.env
 nonebot/__pycache__/
 *.pyc
+.idea/
