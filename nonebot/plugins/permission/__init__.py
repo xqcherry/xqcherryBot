@@ -13,7 +13,7 @@ __plugin_meta__ = PluginMetadata(
 # 是否开启白名单模式（True: 仅名单内可用；False: 所有人可用，黑名单除外）
 WHITELIST_MODE = False
 # 用户黑名单 (QQ号)
-BLACK_USERS = {2683361634}
+BLACK_USERS = {}
 # 群组黑名单 (群号)
 BLACK_GROUPS = {1034817756}
 # 用户白名单 (QQ号)
@@ -37,7 +37,6 @@ async def _(bot: Bot, event: MessageEvent):
         raise IgnoredException("用户在黑名单")
     
     if group_id and group_id in BLACK_GROUPS:
-        await bot.send(event, "群组在黑名单中")
         raise IgnoredException("群组在黑名单")
 
     # 2. 白名单判定
