@@ -68,25 +68,21 @@ async def _(event: MessageEvent, args: Message = CommandArg()):
 
     # 3. 标记完成
     elif op in ["ok", "done", "rm"]:
-        ids_to_process = params[1:]
-        if not ids_to_process:
+        ids_to_delete = [int(sid) for sid in params[1:] if sid.isdigit()]
+        if not ids_to_delete:
             await prd.finish("请输入编号，如：/prd ok 1 2")
 
-        success_ids = []
-        for sid in ids_to_process:
-            if sid.isdigit():
-                target_id = int(sid)
-                for item in to_do:
-                    if item["id"] == target_id and not item["finish"]:
-                        item["finish"] = True
-                        success_ids.append(str(target_id))
-                        break
+        new_to_do = [item for item in to_do if item["id"] not in ids_to_delete]
         
-        if success_ids:
+        if len(new_to_do) < len(to_do):
+            success_ids = [str(i) for i in ids_to_delete]
+            
+            to_do = new_to_do
             JsonUtils.write(DATA_FILE, {"to_do": to_do})
-            await prd.finish(f"需求 #{', '.join(success_ids)} 已处理")
+            
+            await prd.finish(f"需求 #{', '.join(success_ids)} 已清理")
         else:
-            await prd.finish("未找到可处理的有效编号")
+            await prd.finish("未找到对应的待办编号")
 
     else:
         await prd.finish("未知指令，输入 /prd 查看说明")
