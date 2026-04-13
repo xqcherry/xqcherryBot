@@ -9,9 +9,10 @@ from nonebot.adapters.onebot.v11.exception import ActionFailed
 from nonebot_plugin_apscheduler import scheduler
 from nonebot.plugin import PluginMetadata
 from pydantic import BaseModel
+from common.json_utils import JsonUtils
 
 class Config(BaseModel):
-    like_data_filename: str = "data/like/like_data.json"
+    like_data_filename: str = "like_data.json"
     like_time: int = 10
     like_loop: int = 5
 
@@ -28,16 +29,15 @@ __plugin_meta__ = PluginMetadata(
 
 
 conf = get_plugin_config(Config)
-DB_PATH = Path(conf.like_data_filename)
 
+def get_db_data():
+    """使用工具类读取"""
+    data, _ = JsonUtils.read(conf.like_data_filename, default={"users": {}})
+    return data
 
-def get_db():
-    if not DB_PATH.exists(): return {"users": {}}
-    return json.loads(DB_PATH.read_text(encoding="utf-8"))
-
-def save_db(data):
-    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-    DB_PATH.write_text(json.dumps(data, indent=4, ensure_ascii=False), encoding="utf-8")
+def save_db_data(data):
+    """使用工具类安全写入"""
+    JsonUtils.write(conf.like_data_filename, data)
 
 async def do_like(bot: Bot, uid: int)-> tuple[bool, str]:
     """增加循环点赞和详细错误捕获"""
@@ -98,15 +98,15 @@ async def _(event: GroupMessageEvent | PrivateMessageEvent):
     if isinstance(event, PrivateMessageEvent):
         await cmd_sub.finish("订阅功能只能在群聊使用哦！")
         
-    db = get_db()
+    db = get_db_data()
     uid = str(event.user_id)
 
-    is_sub = "取消" not in event.get_event_description() and "取消" not in event.get_plaintext()
+    is_sub = "取消" not in event.get_plaintext()
     db.setdefault("users", {})[uid] = {
         "follow": is_sub, 
         "nickname": event.sender.nickname
     }
-    save_db(db)
+    save_db_data(db)
     state = "开启" if is_sub else "关闭"
     await cmd_sub.finish(f"已为 {event.sender.nickname} {state}每日自动点赞！")
 
@@ -121,7 +121,7 @@ async def _():
         if not bots: return
         bot = bots[0]
 
-    db = get_db()
+    db = get_db_data()
     users = db.get("users", {})
     for uid, info in users.items():
         if info.get("follow"):
