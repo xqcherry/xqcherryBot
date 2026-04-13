@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from nonebot import on_command, logger
 from nonebot.adapters.onebot.v11 import MessageEvent, Message
 from nonebot.params import CommandArg
@@ -13,6 +13,7 @@ __plugin_meta__ = PluginMetadata(
         "1. 添加: /prd add 内容\n"
         "2. 查看: /prd ls\n"
         "3. 完成: /prd ok 编号"
+        "3. 删除: /prd rm 编号"
     )
 )
 
@@ -41,11 +42,13 @@ async def _(event: MessageEvent, args: Message = CommandArg()):
             await prd.finish("请输入需求内容")
             
         new_id = (to_do[-1]["id"] + 1) if to_do else 1
+        tz_bj = timezone(timedelta(hours=8))
+        beijing_time = datetime.now(tz_bj)
         new_item = {
             "id": new_id,
             "content": content,
             "finish": False,
-            "time": datetime.now().strftime("%m-%d %H:%M")
+            "time": beijing_time.strftime("%m-%d %H:%M")
         }
         to_do.append(new_item)
         JsonUtils.write(DATA_FILE, {"to_do": to_do})
@@ -65,23 +68,25 @@ async def _(event: MessageEvent, args: Message = CommandArg()):
 
     # 3. 标记完成
     elif op in ["ok", "done", "rm"]:
-        if len(params) < 2 or not params[1].isdigit():
-            await prd.finish("请输入正确的编号，例如：/prd ok 1")
-            
-        target_id = int(params[1])
-        found = False
+        ids_to_process = params[1:]
+        if not ids_to_process:
+            await prd.finish("请输入编号，如：/prd ok 1 2")
+
+        success_ids = []
+        for sid in ids_to_process:
+            if sid.isdigit():
+                target_id = int(sid)
+                for item in to_do:
+                    if item["id"] == target_id and not item["finish"]:
+                        item["finish"] = True
+                        success_ids.append(str(target_id))
+                        break
         
-        for item in to_do:
-            if item["id"] == target_id and not item["finish"]:
-                item["finish"] = True
-                found = True
-                break
-        
-        if found:
+        if success_ids:
             JsonUtils.write(DATA_FILE, {"to_do": to_do})
-            await prd.finish(f"需求 #{target_id} 已处理")
+            await prd.finish(f"需求 #{', '.join(success_ids)} 已处理")
         else:
-            await prd.finish(f"未找到未完成的编号 #{target_id}")
+            await prd.finish("未找到可处理的有效编号")
 
     else:
         await prd.finish("未知指令，输入 /prd 查看说明")
