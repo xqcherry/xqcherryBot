@@ -29,17 +29,17 @@ async def _init_session():
     global _session
     if _session is None or _session.closed:
         _session = aiohttp.ClientSession(headers=HEADERS)
-        logger.opt(colors=True).info("<g>[PigHub]</g> 全局 HTTP Session 已初始化")
+        logger.opt(colors=True).info("[PigHub] 全局 HTTP Session 已初始化")
 
 @driver.on_shutdown
 async def _close_session():
     global _session
     if _session:
         await _session.close()
-        logger.opt(colors=True).info("<y>[PigHub]</y> 全局 HTTP Session 已关闭")
+        logger.opt(colors=True).info("[PigHub] 全局 HTTP Session 已关闭")
 
 # 注册指令
-get_pig = on_command("来张猪猪", aliases={"随机猪猪"}, priority=5, block=True)
+get_pig = on_command("来张猪猪", aliases={"随机猪猪, 随机猪, 来张猪"}, priority=5, block=True)
 
 @get_pig.handle()
 async def handle_pig():

@@ -30,7 +30,7 @@ def scan_photos():
         if f.is_file() and f.suffix.lower() in VALID_EXTENSIONS
     ]
     PHOTO_CACHE = new_photos
-    logger.info(f"【pngSender】索引更新完成, 共发现 {len(PHOTO_CACHE)} 张照片")
+    logger.info(f"[pngSender]索引更新完成, 共发现 {len(PHOTO_CACHE)} 张照片")
 
 
 @scheduler.scheduled_job("interval", weeks=1)
