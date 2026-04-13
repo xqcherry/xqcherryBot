@@ -39,7 +39,7 @@ async def _close_session():
         logger.opt(colors=True).info("[PigHub] 全局 HTTP Session 已关闭")
 
 # 注册指令
-get_pig = on_command("来张猪猪", aliases={"随机猪猪, 随机猪, 来张猪"}, priority=5, block=True)
+get_pig = on_command("来张猪猪", aliases={"随机猪猪", "随机猪"}, priority=5, block=True)
 
 @get_pig.handle()
 async def handle_pig():
