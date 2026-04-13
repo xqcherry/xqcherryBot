@@ -39,7 +39,7 @@ async def auto_refresh():
 
 
 scan_photos()
-get_png = on_command("来张美照", aliases={"看看美照"}, priority=5, block=True)
+get_png = on_command("来张美照", aliases={"看看美照", "随机美照"}, priority=5, block=True)
 
 @get_png.handle()
 async def handle_png(event: MessageEvent):
