@@ -22,6 +22,7 @@ services:
     restart: always
     volumes:
       - ./nonebot/.env:/app/.env
+      - ./nonebot/data:/app/data
       - "/mnt/f/bot_photos:/app/photos:ro"
     depends_on:
       - napcat
