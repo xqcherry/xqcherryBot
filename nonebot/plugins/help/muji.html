@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        :root {
+            --glass-white: rgba(255, 255, 255, 0.75); /* 半透明玻璃 */
+            --muji-red: #9e2a2b; /* 更有质感的暗红 */
+            --text-main: #2b2b2b;
+            --text-desc: #555555;
+            --line-color: rgba(0, 0, 0, 0.08);
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            width: 850px;
+            background-image: url('{{ bg_data }}');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+            -webkit-font-smoothing: antialiased;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .main-container {
+            width: 720px;
+            margin: 60px 0;
+            /* 核心：毛玻璃效果 */
+            background: var(--glass-white);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            
+            padding: 50px 40px;
+            border-radius: 2px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+        }
+
+        .header {
+            margin-bottom: 40px;
+            text-align: left;
+            border-left: 5px solid var(--muji-red);
+            padding-left: 20px;
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 30px;
+            letter-spacing: 6px;
+            font-weight: 300;
+            color: var(--text-main);
+        }
+
+        .item {
+            margin-bottom: 35px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid var(--line-color);
+        }
+
+        .item:last-child {
+            border-bottom: none;
+        }
+
+        /* 指令部分：独占一行，解决挤压问题 */
+        .usage-row {
+            margin-bottom: 12px;
+        }
+
+        .usage-text {
+            color: var(--muji-red);
+            font-weight: 600;
+            font-size: 18px;
+            line-height: 1.6;
+            /* 模拟标签感 */
+            display: inline-block;
+            background: rgba(158, 42, 43, 0.05);
+            padding: 2px 8px;
+            border-radius: 3px;
+        }
+
+        /* 描述部分：在指令下方，自动换行 */
+        .desc-row {
+            padding-left: 10px;
+        }
+
+        .desc-text {
+            font-size: 15px;
+            color: var(--text-desc);
+            line-height: 1.8; /* 增大行高，让序号看起来更整齐 */
+            white-space: pre-wrap; /* 允许识别换行符 */
+            text-align: justify;
+        }
+
+        .footer {
+            margin-top: 30px;
+            text-align: center;
+            font-size: 11px;
+            color: rgba(0,0,0,0.3);
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+    </style>
+</head>
+<body>
+    <div class="main-container">
+        <div class="header">
+            <h1>指令指南</h1>
+        </div>
+
+        {% for item in plugins %}
+        <div class="item">
+            <div class="usage-row">
+                <span class="usage-text">{{ item.usage }}</span>
+            </div>
+            <div class="desc-row">
+                <div class="desc-text">{{ item.desc }}</div>
+            </div>
+        </div>
+        {% endfor %}
+
+        <div class="footer">
+            Design by xqcherry · 2026
+        </div>
+    </div>
+</body>
+</html>
