@@ -8,5 +8,6 @@ napcat/config
 # 如果 nonebot 有本地环境配置，也可以忽略
 nonebot/.env
 nonebot/__pycache__/
+nonebot/data
 *.pyc
 .idea/
