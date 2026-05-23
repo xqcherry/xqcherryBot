@@ -1,4 +1,4 @@
-from nonebot import get_driver
+from nonebot import get_driver, get_plugin_config
 from nonebot.adapters.onebot.v11 import MessageEvent, Bot
 from nonebot.message import run_preprocessor
 from nonebot.exception import IgnoredException
@@ -23,7 +23,7 @@ class Config(BaseModel):
 
 # 2. 实例化配置
 global_config = get_driver().config
-plugin_config = Config.parse_obj(global_config)
+plugin_config = get_plugin_config(Config)
 
 @run_preprocessor
 async def _(bot: Bot, event: MessageEvent):
