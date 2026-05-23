@@ -7,7 +7,7 @@ from common.json_utils import JsonUtils
 
 
 __plugin_meta__ = PluginMetadata(
-    name="prd",
+    name="需求管理",
     description="需求管理",
     usage=(
         "1. 添加: /prd add 内容\n"

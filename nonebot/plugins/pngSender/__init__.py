@@ -14,7 +14,7 @@ class Config(BaseModel):
 
 __plugin_meta__ = PluginMetadata(
     name="pngSender",
-    description="通过Tailscale在本地随机抽取照片发送",
+    description="随机抽取照片发送",
     usage="指令：来张美照 / 看看美照",
     config=Config,
 )

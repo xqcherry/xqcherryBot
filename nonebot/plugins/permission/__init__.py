@@ -8,7 +8,7 @@ from typing import Set
 
 __plugin_meta__ = PluginMetadata(
     name="全局访问控制",
-    description="黑白名单管理插件（环境变量版）",
+    description="黑白名单管理",
     usage="在 .env 文件中配置对应的环境变量即可，修改后需重启",
 )
 
