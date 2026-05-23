@@ -23,6 +23,7 @@ services:
     volumes:
       - ./nonebot/.env:/app/.env
       - ./nonebot/data:/app/data
+      - ./db:/app/db
     depends_on:
       - napcat
     networks:
