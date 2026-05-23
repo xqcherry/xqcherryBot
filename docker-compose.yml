@@ -9,7 +9,6 @@ services:
     volumes:
       - ./napcat/config:/app/napcat/config
       - ./napcat/.config/QQ:/app/.config/QQ
-      - "/mnt/f/bot_photos:/app/photos:ro"
     ports:
       - "6099:6099" # WebUI 端口
       - "15150:15150"
@@ -24,7 +23,6 @@ services:
     volumes:
       - ./nonebot/.env:/app/.env
       - ./nonebot/data:/app/data
-      - "/mnt/f/bot_photos:/app/photos:ro"
     depends_on:
       - napcat
     networks:
