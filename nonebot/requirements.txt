@@ -6,3 +6,4 @@ playwright
 jinja2
 httpx
 aiosqlite
+dateparser
