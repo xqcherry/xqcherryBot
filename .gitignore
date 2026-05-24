@@ -13,4 +13,4 @@ nonebot/data
 .idea/
 
 # sqlite
-nonebot/db
+db
