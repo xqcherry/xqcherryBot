@@ -11,3 +11,6 @@ nonebot/__pycache__/
 nonebot/data
 *.pyc
 .idea/
+
+# sqlite
+nonebot/db
