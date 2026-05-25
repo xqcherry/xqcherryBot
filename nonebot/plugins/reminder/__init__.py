@@ -21,8 +21,8 @@ __plugin_meta__ = PluginMetadata(
     name="日程提醒",
     description="支持自然语言时间解析的一次性日程提醒",
     usage=(
-        "1. 提醒 明天下午六点 喝水\n"
-        "2. 提醒 3小时后 开会\n"
+        "1. 群聊 @机器人 提醒 明天下午六点 喝水\n"
+        "2. 私聊 提醒 3小时后 开会\n"
         "3. /提醒列表\n"
         "4. /取消提醒 编号"
     ),
@@ -209,8 +209,25 @@ def _is_slash_command(plain_text: str, name: str) -> bool:
     return text == command or text.startswith(f"{command} ")
 
 
-def _strict_reminder_rule(event: MessageEvent) -> bool:
-    return _parse_reminder_creation(event.get_plaintext()) is not None
+def _event_mentions_bot(bot: Bot, event: MessageEvent) -> bool:
+    bot_id = str(getattr(bot, "self_id", getattr(event, "self_id", "")))
+    for segment in getattr(event, "message", []):
+        if getattr(segment, "type", None) == "at" and str(getattr(segment, "data", {}).get("qq")) == bot_id:
+            return True
+    return False
+
+
+def _creation_plain_text(bot: Bot, event: MessageEvent) -> str | None:
+    if isinstance(event, PrivateMessageEvent):
+        return event.get_plaintext()
+    if isinstance(event, GroupMessageEvent) and _event_mentions_bot(bot, event):
+        return event.get_plaintext().lstrip()
+    return None
+
+
+def _strict_reminder_rule(bot: Bot, event: MessageEvent) -> bool:
+    plain_text = _creation_plain_text(bot, event)
+    return plain_text is not None and _parse_reminder_creation(plain_text) is not None
 
 
 def _explicit_list_rule(event: MessageEvent) -> bool:
@@ -227,8 +244,12 @@ cancel_cmd = on_command("取消提醒", rule=Rule(_explicit_cancel_rule), priori
 
 
 @remind_msg.handle()
-async def _(event: MessageEvent):
-    parsed = _parse_reminder_creation(event.get_plaintext())
+async def _(bot: Bot, event: MessageEvent):
+    plain_text = _creation_plain_text(bot, event)
+    if plain_text is None:
+        return
+
+    parsed = _parse_reminder_creation(plain_text)
     if parsed is None:
         return
 
