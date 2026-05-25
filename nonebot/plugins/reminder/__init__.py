@@ -7,9 +7,8 @@ from typing import Protocol
 from zoneinfo import ZoneInfo
 
 import aiosqlite
-from nonebot import get_bots, get_driver, logger, on_command, on_message
-from nonebot.adapters.onebot.v11 import Bot, GroupMessageEvent, Message, MessageEvent, PrivateMessageEvent
-from nonebot.params import CommandArg
+from nonebot import get_bots, get_driver, logger, on_message
+from nonebot.adapters.onebot.v11 import Bot, GroupMessageEvent, MessageEvent, PrivateMessageEvent
 from nonebot.plugin import PluginMetadata
 from nonebot.rule import Rule
 from nonebot_plugin_apscheduler import scheduler
@@ -23,8 +22,8 @@ __plugin_meta__ = PluginMetadata(
     usage=(
         "1. 群聊 @机器人 提醒 明天下午六点 喝水\n"
         "2. 私聊 提醒 3小时后 开会\n"
-        "3. /提醒列表\n"
-        "4. /取消提醒 编号"
+        "3. 提醒列表\n"
+        "4. 取消提醒 编号 / 删除提醒 编号"
     ),
 )
 
@@ -203,10 +202,9 @@ def _format_due_message(row: ReminderLike) -> str:
     return body
 
 
-def _is_slash_command(plain_text: str, name: str) -> bool:
+def _strip_optional_slash(plain_text: str) -> str:
     text = plain_text.strip()
-    command = f"/{name}"
-    return text == command or text.startswith(f"{command} ")
+    return text[1:].lstrip() if text.startswith("/") else text
 
 
 def _event_mentions_bot(bot: Bot, event: MessageEvent) -> bool:
@@ -240,18 +238,30 @@ def _group_unaddressed_reminder_rule(bot: Bot, event: MessageEvent) -> bool:
     return text == "提醒" or text.startswith("提醒 ")
 
 
-def _explicit_list_rule(event: MessageEvent) -> bool:
-    return _is_slash_command(event.get_plaintext(), "提醒列表")
+def _list_rule(event: MessageEvent) -> bool:
+    return _strip_optional_slash(event.get_plaintext()) == "提醒列表"
 
 
-def _explicit_cancel_rule(event: MessageEvent) -> bool:
-    return _is_slash_command(event.get_plaintext(), "取消提醒")
+def _cancel_display_numbers(plain_text: str) -> list[int]:
+    text = _strip_optional_slash(plain_text)
+    for name in ("取消提醒", "删除提醒"):
+        if text == name:
+            return []
+        if text.startswith(f"{name} "):
+            raw_args = text[len(name) :].strip()
+            return [int(item) for item in raw_args.split() if item.isdigit()]
+    return []
+
+
+def _cancel_rule(event: MessageEvent) -> bool:
+    text = _strip_optional_slash(event.get_plaintext())
+    return text in {"取消提醒", "删除提醒"} or text.startswith("取消提醒 ") or text.startswith("删除提醒 ")
 
 
 ignore_group_remind_msg = on_message(rule=Rule(_group_unaddressed_reminder_rule), priority=1, block=True)
 remind_msg = on_message(rule=Rule(_strict_reminder_rule), priority=5, block=True)
-list_cmd = on_command("提醒列表", rule=Rule(_explicit_list_rule), priority=5, block=True)
-cancel_cmd = on_command("取消提醒", rule=Rule(_explicit_cancel_rule), priority=5, block=True)
+list_cmd = on_message(rule=Rule(_list_rule), priority=5, block=True)
+cancel_cmd = on_message(rule=Rule(_cancel_rule), priority=5, block=True)
 
 
 @ignore_group_remind_msg.handle()
@@ -295,9 +305,8 @@ async def _(event: MessageEvent):
 
 
 @cancel_cmd.handle()
-async def _(event: MessageEvent, args: Message = CommandArg()):
-    raw_args = args.extract_plain_text().strip()
-    display_numbers = [int(item) for item in raw_args.split() if item.isdigit()]
+async def _(event: MessageEvent):
+    display_numbers = _cancel_display_numbers(event.get_plaintext())
     if not display_numbers:
         await cancel_cmd.finish("请输入提醒编号，如：/取消提醒 3")
 
