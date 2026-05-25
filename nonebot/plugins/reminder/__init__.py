@@ -210,6 +210,9 @@ def _is_slash_command(plain_text: str, name: str) -> bool:
 
 
 def _event_mentions_bot(bot: Bot, event: MessageEvent) -> bool:
+    if bool(getattr(event, "to_me", False)):
+        return True
+
     bot_id = str(getattr(bot, "self_id", getattr(event, "self_id", "")))
     for segment in getattr(event, "message", []):
         if getattr(segment, "type", None) == "at" and str(getattr(segment, "data", {}).get("qq")) == bot_id:
