@@ -10,8 +10,10 @@ from nonebot import get_bots, get_driver, logger, on_command
 from nonebot.adapters.onebot.v11 import Bot, GroupMessageEvent, Message, MessageEvent, PrivateMessageEvent
 from nonebot.params import CommandArg
 from nonebot.plugin import PluginMetadata
+from nonebot.rule import Rule
 from nonebot_plugin_apscheduler import scheduler
 
+from .behavior import format_due_message, is_explicit_command, number_rows, resolve_cancel_ids
 from .parser import ReminderParseError, parse_reminder_input
 
 
@@ -150,16 +152,28 @@ async def db_mark_sent(reminder_id: int) -> None:
 
 
 async def _send_reminder(bot: Bot, row: ReminderRow) -> None:
-    message = f"⏰ 提醒 #{row.id}\n{row.content}"
+    message = format_due_message(row)
     if row.chat_type == "group" and row.group_id:
         await bot.call_api("send_group_msg", group_id=int(row.group_id), message=message)
     else:
         await bot.call_api("send_private_msg", user_id=int(row.creator_user_id), message=message)
 
 
-remind_cmd = on_command("提醒", aliases={"remind"}, priority=5, block=True)
-list_cmd = on_command("提醒列表", aliases={"reminders"}, priority=5, block=True)
-cancel_cmd = on_command("取消提醒", aliases={"删除提醒"}, priority=5, block=True)
+def _explicit_reminder_rule(event: MessageEvent) -> bool:
+    return is_explicit_command(event.get_plaintext(), {"提醒", "remind"})
+
+
+def _explicit_list_rule(event: MessageEvent) -> bool:
+    return is_explicit_command(event.get_plaintext(), {"提醒列表", "reminders"})
+
+
+def _explicit_cancel_rule(event: MessageEvent) -> bool:
+    return is_explicit_command(event.get_plaintext(), {"取消提醒", "删除提醒"})
+
+
+remind_cmd = on_command("提醒", aliases={"remind"}, rule=Rule(_explicit_reminder_rule), priority=5, block=True)
+list_cmd = on_command("提醒列表", aliases={"reminders"}, rule=Rule(_explicit_list_rule), priority=5, block=True)
+cancel_cmd = on_command("取消提醒", aliases={"删除提醒"}, rule=Rule(_explicit_cancel_rule), priority=5, block=True)
 
 
 @remind_cmd.handle()
@@ -179,7 +193,9 @@ async def _(event: MessageEvent, args: Message = CommandArg()):
         remind_at=parsed.remind_at,
         created_at=_now(),
     )
-    await remind_cmd.finish(f"已设置提醒 #{new_id}：{parsed.remind_at:%m-%d %H:%M} {parsed.content}")
+    rows = await db_list_reminders(creator_user_id=creator_user_id, chat_type=chat_type, group_id=group_id)
+    display_no = next((item.display_no for item in number_rows(rows) if item.row.id == new_id), new_id)
+    await remind_cmd.finish(f"已设置提醒 #{display_no}：{parsed.remind_at:%m-%d %H:%M} {parsed.content}")
 
 
 @list_cmd.handle()
@@ -189,18 +205,20 @@ async def _(event: MessageEvent):
     if not rows:
         await list_cmd.finish("当前没有待提醒日程")
 
-    lines = [f"#{row.id} {row.remind_at[5:16]} {row.content}" for row in rows]
+    lines = [f"#{item.display_no} {item.row.remind_at[5:16]} {item.row.content}" for item in number_rows(rows)]
     await list_cmd.finish("⏰ 待提醒日程：\n" + "\n".join(lines))
 
 
 @cancel_cmd.handle()
 async def _(event: MessageEvent, args: Message = CommandArg()):
     raw_args = args.extract_plain_text().strip()
-    ids = [int(item) for item in raw_args.split() if item.isdigit()]
-    if not ids:
+    display_numbers = [int(item) for item in raw_args.split() if item.isdigit()]
+    if not display_numbers:
         await cancel_cmd.finish("请输入提醒编号，如：/取消提醒 3")
 
     chat_type, group_id, creator_user_id = _event_scope(event)
+    rows = await db_list_reminders(creator_user_id=creator_user_id, chat_type=chat_type, group_id=group_id)
+    ids = resolve_cancel_ids(rows, display_numbers)
     affected = await db_cancel_reminders(ids, creator_user_id=creator_user_id, chat_type=chat_type, group_id=group_id)
     if affected:
         await cancel_cmd.finish(f"已取消 {affected} 条提醒")
