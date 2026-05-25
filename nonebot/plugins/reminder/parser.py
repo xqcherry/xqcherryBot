@@ -41,19 +41,19 @@ _NUM_TOKEN = r"\d{1,4}|[零〇一二两三四五六七八九十]{1,4}"
 def parse_reminder_input(raw: str, now: datetime | None = None) -> ParsedReminder:
     text = raw.strip()
     if not text:
-        raise ReminderParseError("请输入提醒时间和内容")
+        raise ReminderParseError()
 
     base = (now or datetime.now()).replace(microsecond=0)
     parsed = _parse_with_local_rules(text, base) or _parse_with_dateparser(text, base)
     if not parsed:
-        raise ReminderParseError("没看懂提醒时间，请试试：明天下午六点 喝水")
+        raise ReminderParseError()
 
     remind_at, end = parsed
     content = text[end:].strip(" ，,：:")
     if not content:
-        raise ReminderParseError("请输入提醒内容")
+        raise ReminderParseError()
     if remind_at <= base:
-        raise ReminderParseError("提醒时间必须晚于现在")
+        raise ReminderParseError()
 
     return ParsedReminder(remind_at=remind_at.replace(microsecond=0), content=content, time_text=text[:end].strip())
 
@@ -168,7 +168,7 @@ def _parse_clock(match: re.Match[str], default_minute: int) -> tuple[int, int]:
     if match.group(0).endswith("半"):
         minute = 30
     if not 0 <= hour <= 23 or not 0 <= minute <= 59:
-        raise ReminderParseError("时间格式不正确")
+        raise ReminderParseError()
     return hour, minute
 
 

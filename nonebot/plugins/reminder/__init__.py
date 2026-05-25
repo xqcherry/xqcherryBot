@@ -230,6 +230,13 @@ def _strict_reminder_rule(bot: Bot, event: MessageEvent) -> bool:
     return plain_text is not None and _parse_reminder_creation(plain_text) is not None
 
 
+def _group_unaddressed_reminder_rule(bot: Bot, event: MessageEvent) -> bool:
+    if not isinstance(event, GroupMessageEvent) or _event_mentions_bot(bot, event):
+        return False
+    text = event.get_plaintext().strip()
+    return text == "提醒" or text.startswith("提醒 ")
+
+
 def _explicit_list_rule(event: MessageEvent) -> bool:
     return _is_slash_command(event.get_plaintext(), "提醒列表")
 
@@ -238,9 +245,15 @@ def _explicit_cancel_rule(event: MessageEvent) -> bool:
     return _is_slash_command(event.get_plaintext(), "取消提醒")
 
 
+ignore_group_remind_msg = on_message(rule=Rule(_group_unaddressed_reminder_rule), priority=1, block=True)
 remind_msg = on_message(rule=Rule(_strict_reminder_rule), priority=5, block=True)
 list_cmd = on_command("提醒列表", rule=Rule(_explicit_list_rule), priority=5, block=True)
 cancel_cmd = on_command("取消提醒", rule=Rule(_explicit_cancel_rule), priority=5, block=True)
+
+
+@ignore_group_remind_msg.handle()
+async def _():
+    return
 
 
 @remind_msg.handle()
