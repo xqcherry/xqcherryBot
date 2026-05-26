@@ -11,6 +11,7 @@ nonebot/__pycache__/
 nonebot/data
 *.pyc
 .idea/
+.superpowers/
 
 # sqlite
 db
