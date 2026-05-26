@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import hashlib
+import json
+from pathlib import Path
 from typing import Any, Iterable
 
 HIDDEN_PLUGIN_MODULES = {
@@ -9,6 +12,8 @@ HIDDEN_PLUGIN_MODULES = {
 HIDDEN_PLUGIN_NAMES = {
     "echo",
 }
+
+HELP_MENU_CACHE_VERSION = 1
 
 
 def _metadata_extra(metadata: Any) -> dict[str, Any]:
@@ -77,3 +82,42 @@ def format_plugin_not_found(plugin_name: str, plugins: Iterable[Any]) -> str:
     names = [item["name"] for item in collect_plugin_help(plugins)]
     available = "、".join(names) if names else "暂无可用插件"
     return f"未找到插件：{plugin_name}\n可用插件：{available}"
+
+
+def build_help_menu_cache_signature(items: list[dict[str, Any]], template_mtime_ns: int) -> str:
+    payload = {
+        "version": HELP_MENU_CACHE_VERSION,
+        "template_mtime_ns": template_mtime_ns,
+        "plugins": [
+            {
+                "name": item["name"],
+                "description": item["description"],
+                "usage": item["usage"],
+                "order": item["order"],
+            }
+            for item in items
+        ],
+    }
+    encoded = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def read_cached_help_image(image_path: Path, meta_path: Path, signature: str) -> bytes | None:
+    try:
+        if not image_path.exists() or not meta_path.exists():
+            return None
+        meta = json.loads(meta_path.read_text(encoding="utf-8"))
+        if meta.get("signature") != signature:
+            return None
+        return image_path.read_bytes()
+    except (OSError, json.JSONDecodeError):
+        return None
+
+
+def write_cached_help_image(image_path: Path, meta_path: Path, img_bytes: bytes, signature: str) -> None:
+    image_path.parent.mkdir(parents=True, exist_ok=True)
+    image_path.write_bytes(img_bytes)
+    meta_path.write_text(
+        json.dumps({"signature": signature}, ensure_ascii=False, sort_keys=True),
+        encoding="utf-8",
+    )

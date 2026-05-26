@@ -4,14 +4,15 @@
     <meta charset="UTF-8">
     <style>
         :root {
-            --bg-panel: rgba(15, 23, 42, 0.72);
-            --bg-card: rgba(255, 255, 255, 0.10);
-            --line: rgba(255, 255, 255, 0.16);
-            --text-main: #f8fafc;
-            --text-soft: rgba(226, 232, 240, 0.78);
-            --text-muted: rgba(203, 213, 225, 0.62);
-            --accent: #5eead4;
-            --accent-soft: rgba(94, 234, 212, 0.16);
+            --bg: #f6f7fb;
+            --panel: rgba(255, 255, 255, 0.88);
+            --card: rgba(255, 255, 255, 0.76);
+            --line: rgba(31, 41, 55, 0.10);
+            --text-main: #172033;
+            --text-soft: #526071;
+            --text-muted: #8a94a3;
+            --accent: #2f7dd1;
+            --accent-soft: #e6f0fb;
         }
 
         * {
@@ -24,30 +25,32 @@
             min-height: 100vh;
             font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
             color: var(--text-main);
-            background: linear-gradient(145deg, #08111f 0%, #101827 46%, #173342 100%);
+            background:
+                linear-gradient(135deg, rgba(47, 125, 209, 0.10), rgba(80, 184, 163, 0.08)),
+                var(--bg);
             -webkit-font-smoothing: antialiased;
         }
 
         .page {
             width: 850px;
-            padding: 46px 48px;
+            padding: 42px 46px;
         }
 
         .shell {
             overflow: hidden;
             border: 1px solid var(--line);
-            border-radius: 24px;
-            background: var(--bg-panel);
-            box-shadow: 0 28px 80px rgba(0, 0, 0, 0.42);
-            backdrop-filter: blur(22px);
-            -webkit-backdrop-filter: blur(22px);
+            border-radius: 22px;
+            background: var(--panel);
+            box-shadow: 0 24px 70px rgba(36, 48, 70, 0.14);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
         }
 
         .header {
             position: relative;
             padding: 34px 38px 28px;
             border-bottom: 1px solid var(--line);
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.11), rgba(255, 255, 255, 0.035));
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.92), rgba(244, 248, 253, 0.74));
         }
 
         .eyebrow {
@@ -78,9 +81,9 @@
             right: 38px;
             min-width: 76px;
             padding: 10px 14px;
-            border: 1px solid rgba(94, 234, 212, 0.32);
-            border-radius: 18px;
-            background: rgba(8, 17, 31, 0.34);
+            border: 1px solid rgba(47, 125, 209, 0.20);
+            border-radius: 16px;
+            background: var(--accent-soft);
             color: var(--text-main);
             text-align: center;
         }
@@ -100,7 +103,7 @@
         }
 
         .content {
-            padding: 26px;
+            padding: 24px 26px 26px;
         }
 
         .list {
@@ -110,15 +113,15 @@
         }
 
         .plugin {
-            min-height: 76px;
+            min-height: 74px;
             display: flex;
             align-items: center;
             gap: 18px;
-            padding: 16px 18px;
+            padding: 15px 18px;
             border: 1px solid var(--line);
-            border-radius: 16px;
-            background: linear-gradient(145deg, var(--bg-card), rgba(255, 255, 255, 0.052));
-            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.09);
+            border-radius: 14px;
+            background: var(--card);
+            box-shadow: 0 10px 24px rgba(36, 48, 70, 0.07);
         }
 
         .plugin-index {
@@ -128,7 +131,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            border-radius: 12px;
+            border-radius: 11px;
             background: var(--accent-soft);
             color: var(--accent);
             font-size: 13px;
@@ -150,7 +153,7 @@
         }
 
         .plugin-desc {
-            margin: 8px 0 0;
+            margin: 7px 0 0;
             color: var(--text-soft);
             font-size: 14px;
             line-height: 1.55;
@@ -158,7 +161,7 @@
         }
 
         .footer {
-            padding: 18px 38px 24px;
+            padding: 17px 38px 22px;
             border-top: 1px solid var(--line);
             color: var(--text-muted);
             font-size: 11px;
