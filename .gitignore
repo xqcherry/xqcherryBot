@@ -9,6 +9,7 @@ napcat/config
 nonebot/.env
 nonebot/__pycache__/
 nonebot/data
+nonebot/plugins/help/.cache/
 *.pyc
 .idea/
 .superpowers/
