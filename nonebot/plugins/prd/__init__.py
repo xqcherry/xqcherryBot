@@ -9,7 +9,7 @@ from nonebot.plugin import PluginMetadata
 
 __plugin_meta__ = PluginMetadata(
     name="需求管理",
-    description="支持 SQLite 增删改查的精简版需求管理工具",
+    description="需求管理工具",
     usage=(
         "1. 添加: /prd add 内容\n"
         "2. 查看: /prd ls\n"

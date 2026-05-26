@@ -18,7 +18,7 @@ from .parser import ParsedReminder, ReminderParseError, parse_reminder_input
 
 __plugin_meta__ = PluginMetadata(
     name="日程提醒",
-    description="支持自然语言时间解析的一次性日程提醒",
+    description="一次性日程提醒",
     usage=(
         "1. 群聊 @机器人 提醒 明天下午六点 喝水\n"
         "2. 私聊 提醒 3小时后 开会\n"

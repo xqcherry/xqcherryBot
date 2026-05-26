@@ -7,7 +7,7 @@ from nonebot.adapters.onebot.v11 import MessageSegment, Message
 from nonebot.log import logger
 
 __plugin_meta__ = PluginMetadata(
-    name="随机获取猪猪图片",
+    name="随机猪猪",
     description="从 pighub.top 获取随机猪猪图片",
     usage="指令：来张猪猪 / 随机猪猪",
     config=None,

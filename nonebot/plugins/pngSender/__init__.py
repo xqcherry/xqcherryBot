@@ -13,8 +13,8 @@ class Config(BaseModel):
     whitelist_qq: set[int] = Field(default_factory=lambda: {2417185282, 2303866129})
 
 __plugin_meta__ = PluginMetadata(
-    name="pngSender",
-    description="随机抽取照片发送",
+    name="图片发送",
+    description="本地库随机抽取照片发送",
     usage="指令：来张美照 / 看看美照",
     config=Config,
     extra={"help_order": 40},
