@@ -15,7 +15,8 @@ __plugin_meta__ = PluginMetadata(
         "2. 查看: /prd ls\n"
         "3. 完成: /prd ok 编号\n"
         "4. 删除: /prd rm 编号"
-    )
+    ),
+    extra={"help_order": 30},
 )
 
 global_config = get_driver().config

@@ -17,6 +17,7 @@ __plugin_meta__ = PluginMetadata(
     description="随机抽取照片发送",
     usage="指令：来张美照 / 看看美照",
     config=Config,
+    extra={"help_order": 40},
 )
 
 plugin_config = get_plugin_config(Config)

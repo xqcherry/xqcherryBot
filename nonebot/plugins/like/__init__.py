@@ -22,7 +22,8 @@ __plugin_meta__ = PluginMetadata(
         "2. 订阅赞：开启每日早晨 5:00 自动点赞\n"
         "3. 取消订阅赞：关闭自动点赞"
     ),
-    config=Config
+    config=Config,
+    extra={"help_order": 20},
 )
 
 conf = get_plugin_config(Config)

@@ -25,6 +25,7 @@ __plugin_meta__ = PluginMetadata(
         "3. 提醒列表\n"
         "4. 取消提醒 编号 / 删除提醒 编号"
     ),
+    extra={"help_order": 10},
 )
 
 
