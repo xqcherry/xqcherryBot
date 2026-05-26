@@ -4,127 +4,211 @@
     <meta charset="UTF-8">
     <style>
         :root {
-            --glass-white: rgba(255, 255, 255, 0.75); /* 半透明玻璃 */
-            --muji-red: #9e2a2b; /* 更有质感的暗红 */
-            --text-main: #2b2b2b;
-            --text-desc: #555555;
-            --line-color: rgba(0, 0, 0, 0.08);
+            --bg-ink: #08111f;
+            --bg-panel: rgba(15, 23, 42, 0.72);
+            --bg-card: rgba(255, 255, 255, 0.105);
+            --bg-card-strong: rgba(255, 255, 255, 0.16);
+            --line: rgba(255, 255, 255, 0.16);
+            --text-main: #f8fafc;
+            --text-soft: rgba(226, 232, 240, 0.78);
+            --text-muted: rgba(203, 213, 225, 0.62);
+            --accent: #5eead4;
+            --accent-warm: #fbbf24;
+        }
+
+        * {
+            box-sizing: border-box;
         }
 
         body {
             margin: 0;
-            padding: 0;
             width: 850px;
-            background-image: url('{{ bg_data }}');
-            background-size: cover;
-            background-position: center;
-            background-attachment: fixed;
+            min-height: 100vh;
             font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+            color: var(--text-main);
+            background:
+                radial-gradient(circle at 20% 8%, rgba(94, 234, 212, 0.24), transparent 26%),
+                radial-gradient(circle at 90% 18%, rgba(251, 191, 36, 0.18), transparent 24%),
+                linear-gradient(145deg, #08111f 0%, #101827 42%, #173342 100%);
             -webkit-font-smoothing: antialiased;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
         }
 
-        .main-container {
-            width: 720px;
-            margin: 60px 0;
-            /* 核心：毛玻璃效果 */
-            background: var(--glass-white);
-            backdrop-filter: blur(15px);
-            -webkit-backdrop-filter: blur(15px);
-            
-            padding: 50px 40px;
-            border-radius: 2px;
-            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.4);
+        .page {
+            width: 850px;
+            padding: 46px 48px;
+        }
+
+        .shell {
+            overflow: hidden;
+            border: 1px solid var(--line);
+            border-radius: 28px;
+            background: var(--bg-panel);
+            box-shadow: 0 28px 80px rgba(0, 0, 0, 0.42);
+            backdrop-filter: blur(22px);
+            -webkit-backdrop-filter: blur(22px);
         }
 
         .header {
-            margin-bottom: 40px;
-            text-align: left;
-            border-left: 5px solid var(--muji-red);
-            padding-left: 20px;
+            position: relative;
+            padding: 34px 38px 28px;
+            border-bottom: 1px solid var(--line);
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.11), rgba(255, 255, 255, 0.035));
         }
 
-        .header h1 {
+        .eyebrow {
+            margin-bottom: 10px;
+            color: var(--accent);
+            font-size: 13px;
+            font-weight: 700;
+            letter-spacing: 0;
+        }
+
+        h1 {
             margin: 0;
-            font-size: 30px;
-            letter-spacing: 6px;
-            font-weight: 300;
+            font-size: 36px;
+            line-height: 1.18;
+            letter-spacing: 0;
+        }
+
+        .summary {
+            margin-top: 10px;
+            color: var(--text-soft);
+            font-size: 14px;
+            line-height: 1.7;
+        }
+
+        .count {
+            position: absolute;
+            top: 34px;
+            right: 38px;
+            min-width: 76px;
+            padding: 10px 14px;
+            border: 1px solid rgba(94, 234, 212, 0.32);
+            border-radius: 18px;
+            background: rgba(8, 17, 31, 0.34);
             color: var(--text-main);
+            text-align: center;
         }
 
-        .item {
-            margin-bottom: 35px;
-            padding-bottom: 15px;
-            border-bottom: 1px solid var(--line-color);
+        .count-number {
+            display: block;
+            font-size: 24px;
+            font-weight: 800;
+            line-height: 1;
         }
 
-        .item:last-child {
-            border-bottom: none;
+        .count-label {
+            display: block;
+            margin-top: 4px;
+            color: var(--text-muted);
+            font-size: 11px;
         }
 
-        /* 指令部分：独占一行，解决挤压问题 */
-        .usage-row {
-            margin-bottom: 12px;
+        .content {
+            padding: 26px;
         }
 
-        .usage-text {
-            color: var(--muji-red);
-            font-weight: 600;
-            font-size: 18px;
-            line-height: 1.6;
-            /* 模拟标签感 */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 16px;
+        }
+
+        .plugin {
+            min-height: 184px;
+            display: flex;
+            flex-direction: column;
+            border: 1px solid var(--line);
+            border-radius: 20px;
+            background: linear-gradient(145deg, var(--bg-card), rgba(255, 255, 255, 0.055));
+            box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.09);
+        }
+
+        .plugin-head {
+            padding: 18px 18px 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.10);
+        }
+
+        .plugin-name {
+            margin: 0;
+            color: var(--text-main);
+            font-size: 20px;
+            font-weight: 800;
+            line-height: 1.35;
+            letter-spacing: 0;
+        }
+
+        .plugin-desc {
+            margin: 8px 0 0;
+            color: var(--text-soft);
+            font-size: 13px;
+            line-height: 1.65;
+        }
+
+        .usage {
+            flex: 1;
+            margin: 0;
+            padding: 14px 18px 18px;
+            color: rgba(248, 250, 252, 0.86);
+            font-size: 12px;
+            line-height: 1.7;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .usage-label {
             display: inline-block;
-            background: rgba(158, 42, 43, 0.05);
-            padding: 2px 8px;
-            border-radius: 3px;
-        }
-
-        /* 描述部分：在指令下方，自动换行 */
-        .desc-row {
-            padding-left: 10px;
-        }
-
-        .desc-text {
-            font-size: 15px;
-            color: var(--text-desc);
-            line-height: 1.8; /* 增大行高，让序号看起来更整齐 */
-            white-space: pre-wrap; /* 允许识别换行符 */
-            text-align: justify;
+            margin-bottom: 8px;
+            padding: 3px 8px;
+            border-radius: 999px;
+            background: rgba(94, 234, 212, 0.14);
+            color: var(--accent);
+            font-size: 11px;
+            font-weight: 700;
         }
 
         .footer {
-            margin-top: 30px;
-            text-align: center;
+            padding: 18px 38px 24px;
+            border-top: 1px solid var(--line);
+            color: var(--text-muted);
             font-size: 11px;
-            color: rgba(0,0,0,0.3);
-            letter-spacing: 2px;
-            text-transform: uppercase;
+            line-height: 1.6;
+            text-align: center;
         }
     </style>
 </head>
 <body>
-    <div class="main-container">
-        <div class="header">
-            <h1>指令指南</h1>
-        </div>
+    <main class="page">
+        <section class="shell">
+            <header class="header">
+                <div class="eyebrow">BOT COMMAND CENTER</div>
+                <h1>功能菜单</h1>
+                <div class="summary">自动读取插件元信息生成，发送对应指令即可使用。</div>
+                <div class="count">
+                    <span class="count-number">{{ plugins | length }}</span>
+                    <span class="count-label">plugins</span>
+                </div>
+            </header>
 
-        {% for item in plugins %}
-        <div class="item">
-            <div class="usage-row">
-                <span class="usage-text">{{ item.usage }}</span>
+            <div class="content">
+                <div class="grid">
+                    {% for item in plugins %}
+                    <article class="plugin">
+                        <div class="plugin-head">
+                            <h2 class="plugin-name">{{ item.name }}</h2>
+                            <p class="plugin-desc">{{ item.description }}</p>
+                        </div>
+                        <pre class="usage"><span class="usage-label">USAGE</span>
+{{ item.usage }}</pre>
+                    </article>
+                    {% endfor %}
+                </div>
             </div>
-            <div class="desc-row">
-                <div class="desc-text">{{ item.desc }}</div>
-            </div>
-        </div>
-        {% endfor %}
 
-        <div class="footer">
-            Design by xqcherry · 2026
-        </div>
-    </div>
+            <footer class="footer">
+                Design by xqcherry · 2026
+            </footer>
+        </section>
+    </main>
 </body>
 </html>

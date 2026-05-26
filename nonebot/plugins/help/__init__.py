@@ -1,7 +1,9 @@
 from pathlib import Path
 from nonebot import get_loaded_plugins, on_command
 from nonebot.adapters.onebot.v11 import MessageSegment
+from nonebot.exception import FinishedException
 from nonebot.plugin import PluginMetadata
+from common.help_menu import collect_plugin_help
 from common.render import html2pic
 
 __plugin_meta__ = PluginMetadata(
@@ -9,20 +11,13 @@ __plugin_meta__ = PluginMetadata(
     description="显示机器人所有功能的指令清单",
     usage="帮助 | 菜单 | help | ls",
     config=None,
+    extra={"hidden": True},
 )
 
 TEMPLATE_PATH = Path(__file__).parent
 
 def get_all_plugins_info():
-    plugins = get_loaded_plugins()
-    help_data = []
-    for p in plugins:
-        if p.metadata:
-            help_data.append({
-                "usage": p.metadata.usage or "未定义指令",
-                "desc": p.metadata.description or "暂无详细描述"
-            })
-    return help_data
+    return collect_plugin_help(get_loaded_plugins())
 
 async def render_help_img():
 
