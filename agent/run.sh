@@ -31,7 +31,7 @@ while true; do
 
     # 使用 -p $PROJECT_NAME 强行打上目录标签，防止多项目混淆
     case $opt in
-        1) docker compose -f $COMPOSE_FILE -p $PROJECT_NAME up -d ;;
+        1) docker compose -f $COMPOSE_FILE -p $PROJECT_NAME up --build -d ;;
         2) docker compose -f $COMPOSE_FILE -p $PROJECT_NAME stop ;;
         3) docker compose -f $COMPOSE_FILE -p $PROJECT_NAME restart ;;
         4) docker compose -f $COMPOSE_FILE -p $PROJECT_NAME logs -f --tail=50 ;;
