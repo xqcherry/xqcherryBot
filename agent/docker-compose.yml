@@ -14,4 +14,4 @@ services:
     ports:
       - "${AGENT_GATEWAY_PORT:-8787}:${AGENT_GATEWAY_PORT:-8787}"
     volumes:
-      - ./data:/app/packages/data
+      - ./data:/app/agent/data
