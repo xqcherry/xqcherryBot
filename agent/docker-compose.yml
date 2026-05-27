@@ -1,0 +1,17 @@
+services:
+  agent-gateway:
+    build:
+      context: .
+    image: xq-agent-gateway:latest
+    container_name: xq-agent-gateway
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      AGENT_GATEWAY_HOST: 0.0.0.0
+      AGENT_GATEWAY_PORT: ${AGENT_GATEWAY_PORT:-8787}
+      AGENT_GATEWAY_DB: /app/agent/data/agent-gateway.sqlite
+    ports:
+      - "${AGENT_GATEWAY_PORT:-8787}:${AGENT_GATEWAY_PORT:-8787}"
+    volumes:
+      - ./data:/app/packages/data
