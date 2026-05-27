@@ -1,0 +1,52 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+!.env.*.example
+
+# Runtime data
+data/
+logs/
+*.log
+*.pid
+*.pid.lock
+*.sqlite
+*.sqlite3
+*.db
+*.db-shm
+*.db-wal
+agent-gateway.sqlite
+agent-gateway.sqlite-shm
+agent-gateway.sqlite-wal
+
+# Test and coverage output
+coverage/
+.nyc_output/
+.pytest_cache/
+__pycache__/
+*.py[cod]
+
+# Build/cache output
+dist/
+build/
+*.tsbuildinfo
+.eslintcache
+
+# Package manager noise
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Editors and OS
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
