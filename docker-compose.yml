@@ -27,6 +27,8 @@ services:
       - ./nonebot/data:/app/data
       - ./migrations:/app/migrations
       - ./db:/app/db
+    extra_hosts:
+    - "host.docker.internal:host-gateway"
     depends_on:
       - napcat
     networks:
