@@ -7,3 +7,5 @@ jinja2
 httpx
 aiosqlite
 dateparser
+
+websockets
