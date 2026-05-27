@@ -1,6 +1,6 @@
 FROM node:24-slim
 
-WORKDIR /app/packages
+WORKDIR /app/agent
 
 ENV NODE_ENV=production
 
