@@ -20,6 +20,8 @@ services:
     build: ./nonebot
     container_name: nonebot
     restart: always
+    env_file:
+      - ./nonebot/.env
     volumes:
       - ./nonebot/.env:/app/.env
       - ./nonebot/data:/app/data
