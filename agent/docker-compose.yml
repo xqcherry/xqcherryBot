@@ -2,8 +2,8 @@ services:
   agent-gateway:
     build:
       context: .
-    image: xq-agent-gateway:latest
-    container_name: xq-agent-gateway
+    image: claudecode-agent-gateway:latest
+    container_name: claudecode-agent-gateway
     restart: unless-stopped
     env_file:
       - .env
@@ -15,3 +15,13 @@ services:
       - "${AGENT_GATEWAY_PORT:-8787}:${AGENT_GATEWAY_PORT:-8787}"
     volumes:
       - ./data:/app/agent/data
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:' + (process.env.AGENT_GATEWAY_PORT || '8787') + '/health').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
