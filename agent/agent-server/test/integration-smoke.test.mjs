@@ -197,10 +197,35 @@ test('websocket server stores observed messages and returns final results', asyn
   assert.equal(session.platformMessages.length, 2)
   assert.ok(logs.some(event => event.type === 'connection_opened'))
   assert.ok(logs.some(event => event.type === 'message_received' && event.messageType === 'user_message'))
+  assert.ok(logs.some(event => event.type === 'message_received' && event.sessionId === 'qq-group:1000'))
 
   socket.terminate()
   for (const client of server.clients) {
     client.terminate()
   }
+  server.close()
+})
+
+test('websocket server exposes an HTTP health endpoint', async () => {
+  const engine = new AgentEngine({
+    modelProvider: scriptedProvider([]),
+    sessionStore: new InMemorySessionStore(),
+    permissionManager: new InMemoryPermissionManager(),
+    tools: [],
+  })
+  const server = await createWebSocketAgentServer({
+    engine,
+    port: 0,
+    healthCheck: () => ({ ok: true, db: 'ok' }),
+  })
+  const address = server.address()
+
+  const response = await fetch(`http://127.0.0.1:${address.port}/health`)
+  const body = await response.json()
+  const root = await fetch(`http://127.0.0.1:${address.port}/`)
+
+  assert.equal(response.status, 200)
+  assert.deepEqual(body, { ok: true, db: 'ok' })
+  assert.equal(root.status, 426)
   server.close()
 })

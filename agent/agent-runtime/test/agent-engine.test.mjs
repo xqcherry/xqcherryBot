@@ -3,11 +3,17 @@ import test from 'node:test'
 
 import {
   AgentEngine,
-  ContextBuilder,
+  ContextEngine,
   InMemoryPermissionManager,
   InMemorySessionStore,
   OpenAICompatibleSummarizer,
+  ToolPolicy,
+  ToolRegistry,
+  ToolSelector,
+  createActiveMemoriesTool,
   createMemoryCandidateTool,
+  createRecentMessagesTool,
+  createSearchChatHistoryTool,
 } from '../src/index.mjs'
 
 function scriptedProvider(eventsByCall) {
@@ -73,7 +79,7 @@ test('aggregates streamed OpenAI tool call arguments and feeds tool result into 
   }
 
   assert.deepEqual(
-    events.map(event => event.type),
+    events.filter(event => event.type !== 'turn_stage').map(event => event.type),
     [
       'tool_call_started',
       'tool_call_finished',
@@ -81,8 +87,9 @@ test('aggregates streamed OpenAI tool call arguments and feeds tool result into 
       'final_result',
     ],
   )
-  assert.equal(events[1].toolCallId, 'call_recent')
-  assert.equal(events[1].result.messages[0], 'hello')
+  const finished = events.find(event => event.type === 'tool_call_finished')
+  assert.equal(finished.toolCallId, 'call_recent')
+  assert.equal(finished.result.messages[0], 'hello')
   assert.equal(provider.requests.length, 2)
   assert.deepEqual(provider.requests[1].messages.at(-1), {
     role: 'tool',
@@ -92,7 +99,7 @@ test('aggregates streamed OpenAI tool call arguments and feeds tool result into 
   })
 })
 
-test('uses a generic default system prompt', async () => {
+test('uses the default base core prompt without adapter details', async () => {
   const provider = scriptedProvider([
     [{ type: 'assistant_delta', text: 'hi' }, { type: 'finish', reason: 'stop' }],
   ])
@@ -113,7 +120,38 @@ test('uses a generic default system prompt', async () => {
   const systemPrompt = provider.requests[0].messages[0].content
   assert.doesNotMatch(systemPrompt, /NoneBot|NapCat/i)
   assert.match(systemPrompt, /agent/i)
-  assert.match(systemPrompt, /permission/i)
+  assert.match(systemPrompt, /current user message/i)
+  assert.match(systemPrompt, /Do not invent tool results/i)
+})
+
+test('uses contextEngine output for model requests', async () => {
+  const provider = scriptedProvider([
+    [{ type: 'assistant_delta', text: 'ok' }, { type: 'finish', reason: 'stop' }],
+  ])
+  const contextEngine = {
+    async build() {
+      return {
+        blocks: [],
+        messages: [{ role: 'user', content: 'from-context-engine' }],
+      }
+    },
+  }
+  const engine = new AgentEngine({
+    modelProvider: provider,
+    tools: [],
+    sessionStore: new InMemorySessionStore(),
+    permissionManager: new InMemoryPermissionManager(),
+    contextEngine,
+  })
+
+  for await (const _event of engine.submitUserMessage({
+    sessionId: 'context-engine-preferred',
+    text: 'hello',
+  })) {
+    // Drain the stream so the provider captures the request.
+  }
+
+  assert.equal(provider.requests[0].messages[0].content, 'from-context-engine')
 })
 
 test('passes opaque message metadata to tool context without interpreting it', async () => {
@@ -176,6 +214,107 @@ test('passes opaque message metadata to tool context without interpreting it', a
   ])
 })
 
+test('exposes only selected tools to the model provider', async () => {
+  const provider = scriptedProvider([
+    [{ type: 'assistant_delta', text: 'ok' }, { type: 'finish', reason: 'stop' }],
+  ])
+  const call = async () => ({ ok: true })
+  const registry = new ToolRegistry([
+    {
+      name: 'read_file',
+      description: 'Read a file',
+      inputSchema: { type: 'object', properties: {} },
+      readOnly: true,
+      group: 'files',
+      call,
+    },
+    {
+      name: 'send_message',
+      description: 'Send message',
+      inputSchema: { type: 'object', properties: {} },
+      group: 'qq',
+      activationRule: input => input.metadata?.platform === 'qq',
+      call,
+    },
+  ])
+  const engine = new AgentEngine({
+    modelProvider: provider,
+    tools: registry.list(),
+    toolSelector: new ToolSelector({ registry, groups: ['qq'] }),
+    sessionStore: new InMemorySessionStore(),
+    permissionManager: new InMemoryPermissionManager(),
+  })
+
+  for await (const _event of engine.submitUserMessage({
+    sessionId: 'tool-select-session',
+    text: 'hello',
+    metadata: { platform: 'qq' },
+  })) {
+    // Drain the stream.
+  }
+
+  assert.deepEqual(
+    provider.requests[0].tools.map(definition => definition.function.name),
+    ['send_message'],
+  )
+})
+
+test('rejects model calls to tools that were not exposed this turn', async () => {
+  const provider = scriptedProvider([
+    [
+      {
+        type: 'tool_call_delta',
+        index: 0,
+        id: 'call_send',
+        name: 'send_message',
+        argumentsDelta: '{}',
+      },
+      { type: 'finish', reason: 'tool_calls' },
+    ],
+    [{ type: 'assistant_delta', text: 'refused' }, { type: 'finish', reason: 'stop' }],
+  ])
+  let sent = 0
+  const call = async () => {
+    sent += 1
+    return { sent: true }
+  }
+  const registry = new ToolRegistry([
+    {
+      name: 'send_message',
+      description: 'Send message',
+      inputSchema: { type: 'object', properties: {} },
+      readOnly: true,
+      group: 'qq',
+      call,
+    },
+  ])
+  const engine = new AgentEngine({
+    modelProvider: provider,
+    tools: registry.list(),
+    toolSelector: new ToolSelector({
+      registry,
+      policy: new ToolPolicy({ denyToolNames: ['send_message'] }),
+    }),
+    sessionStore: new InMemorySessionStore(),
+    permissionManager: new InMemoryPermissionManager(),
+  })
+
+  const events = []
+  for await (const event of engine.submitUserMessage({
+    sessionId: 'unexposed-tool-session',
+    text: 'send it',
+  })) {
+    events.push(event)
+  }
+
+  assert.equal(sent, 0)
+  assert.deepEqual(provider.requests[0].tools, [])
+  assert.deepEqual(JSON.parse(provider.requests[1].messages.at(-1).content), {
+    error: 'Tool not exposed this turn: send_message',
+  })
+  assert.equal(events.findLast(event => event.type !== 'turn_stage').type, 'final_result')
+})
+
 test('builds model context from summary, recent raw chat, and current question', async () => {
   const provider = scriptedProvider([
     [{ type: 'assistant_delta', text: '安排如下' }, { type: 'finish', reason: 'stop' }],
@@ -207,7 +346,7 @@ test('builds model context from summary, recent raw chat, and current question',
     tools: [],
     sessionStore: store,
     permissionManager: new InMemoryPermissionManager(),
-    contextBuilder: new ContextBuilder({ sessionStore: store, recentMessageLimit: 2 }),
+    contextEngine: new ContextEngine({ sessionStore: store, recentMessageLimit: 2 }),
   })
 
   for await (const _event of engine.submitUserMessage({
@@ -246,7 +385,7 @@ test('context compaction summarizes older messages and keeps recent raw messages
     tools: [],
     sessionStore: store,
     permissionManager: new InMemoryPermissionManager(),
-    contextBuilder: new ContextBuilder({
+    contextEngine: new ContextEngine({
       sessionStore: store,
       recentMessageLimit: 2,
       uncompactedMessageLimit: 3,
@@ -291,7 +430,7 @@ test('context compaction keeps summary coverage continuous across repeated compa
     tools: [],
     sessionStore: store,
     permissionManager: new InMemoryPermissionManager(),
-    contextBuilder: new ContextBuilder({
+    contextEngine: new ContextEngine({
       sessionStore: store,
       recentMessageLimit: 2,
       uncompactedMessageLimit: 3,
@@ -361,7 +500,7 @@ test('context compaction resumes after an existing summary without recovering co
     tools: [],
     sessionStore: store,
     permissionManager: new InMemoryPermissionManager(),
-    contextBuilder: new ContextBuilder({
+    contextEngine: new ContextEngine({
       sessionStore: store,
       recentMessageLimit: 2,
       uncompactedMessageLimit: 3,
@@ -446,7 +585,7 @@ test('summary failures fall back to recent raw context without blocking the answ
     tools: [],
     sessionStore: store,
     permissionManager: new InMemoryPermissionManager(),
-    contextBuilder: new ContextBuilder({
+    contextEngine: new ContextEngine({
       sessionStore: store,
       recentMessageLimit: 2,
       uncompactedMessageLimit: 3,
@@ -464,7 +603,7 @@ test('summary failures fall back to recent raw context without blocking the answ
     events.push(event)
   }
 
-  assert.equal(events.at(-1).type, 'final_result')
+  assert.equal(events.findLast(event => event.type !== 'turn_stage').type, 'final_result')
   const session = await store.getOrCreateSession('summary-failure')
   assert.equal(session.conversationSummaries.length, 0)
   const requestText = provider.requests[0].messages.map(message => message.content).join('\n')
@@ -516,10 +655,67 @@ test('memory candidate tool writes candidates without activating them', async ()
   assert.equal(candidates[0].summary, '用户喜欢简洁回答')
   assert.equal(candidates[0].sessionId, 'qq-group:1000')
   assert.equal(candidates[0].createdByMessageId, '77')
+  assert.equal(candidates[0].metadata.sourceSessionId, 'qq-group:1000')
+  assert.equal(candidates[0].metadata.sourceSenderId, '42')
+  assert.deepEqual(candidates[0].metadata.evidenceMessageIds, ['77'])
+  assert.equal(candidates[0].metadata.confidence, 0.8)
   assert.deepEqual(await store.listActiveMemories({ scope: 'user', subjectId: '42' }), [])
 })
 
-test('context builder injects only active memories for matching session and user scopes', async () => {
+test('search chat history tool searches only the current session by default', async () => {
+  const store = new InMemorySessionStore()
+  await store.appendPlatformMessage({
+    sessionId: 'qq-group:1000',
+    messageId: 'm1',
+    senderId: '42',
+    text: '今晚八点开黑',
+    timestamp: '2026-05-27T12:00:00.000Z',
+  })
+  await store.appendPlatformMessage({
+    sessionId: 'qq-group:2000',
+    messageId: 'm2',
+    senderId: '99',
+    text: '今晚八点开会',
+    timestamp: '2026-05-27T12:01:00.000Z',
+  })
+
+  const tool = createSearchChatHistoryTool({ sessionStore: store })
+  const result = await tool.call({ query: '八点' }, { sessionId: 'qq-group:1000' })
+
+  assert.equal(tool.name, 'search_chat_history')
+  assert.equal(tool.requiresPermission, false)
+  assert.equal(result.messages.length, 1)
+  assert.equal(result.messages[0].messageId, 'm1')
+})
+
+test('search chat history tool supports limit and senderId filters', async () => {
+  const store = new InMemorySessionStore()
+  for (const [messageId, senderId, text] of [
+    ['m1', '42', '部署检查完成'],
+    ['m2', '7', '部署还在跑'],
+    ['m3', '42', '部署可以验收'],
+  ]) {
+    await store.appendPlatformMessage({
+      sessionId: 'qq-group:1000',
+      messageId,
+      senderId,
+      text,
+    })
+  }
+
+  const tool = createSearchChatHistoryTool({ sessionStore: store })
+  const result = await tool.call(
+    { query: '部署', senderId: '42', limit: 1 },
+    { sessionId: 'qq-group:1000' },
+  )
+
+  assert.deepEqual(
+    result.messages.map(message => message.messageId),
+    ['m3'],
+  )
+})
+
+test('context engine injects only active memories for matching session and user scopes', async () => {
   const store = new InMemorySessionStore()
   const sessionCandidate = await store.appendMemoryCandidate({
     sessionId: 'qq-group:1000',
@@ -555,7 +751,7 @@ test('context builder injects only active memories for matching session and user
     tools: [],
     sessionStore: store,
     permissionManager: new InMemoryPermissionManager(),
-    contextBuilder: new ContextBuilder({ sessionStore: store }),
+    contextEngine: new ContextEngine({ sessionStore: store }),
   })
 
   for await (const _event of engine.submitUserMessage({
@@ -615,7 +811,8 @@ test('pauses side-effect tools until permission is allowed', async () => {
     text: '回复 ok',
   })
 
-  const first = await iterator.next()
+  let first = await iterator.next()
+  while (first.value?.type === 'turn_stage') first = await iterator.next()
   assert.equal(first.value.type, 'permission_request')
   assert.equal(first.value.toolName, 'send_message')
   assert.equal(sent, 0)
@@ -633,7 +830,7 @@ test('pauses side-effect tools until permission is allowed', async () => {
 
   assert.equal(sent, 1)
   assert.deepEqual(
-    rest.map(event => event.type),
+    rest.filter(event => event.type !== 'turn_stage').map(event => event.type),
     ['tool_call_started', 'tool_call_finished', 'assistant_delta', 'final_result'],
   )
 })
@@ -682,7 +879,8 @@ test('denied side-effect tools are not executed and the model receives a tool er
     text: '发出去',
   })
 
-  const first = await iterator.next()
+  let first = await iterator.next()
+  while (first.value?.type === 'turn_stage') first = await iterator.next()
   assert.equal(first.value.type, 'permission_request')
   permissionManager.respond({
     toolCallId: 'call_send',
@@ -702,5 +900,163 @@ test('denied side-effect tools are not executed and the model receives a tool er
     error: 'Permission denied',
     reason: 'not authorized',
   })
-  assert.equal(rest.at(-1).type, 'final_result')
+  assert.equal(rest.findLast(event => event.type !== 'turn_stage').type, 'final_result')
+})
+
+test('permission requests time out with a deny decision', async () => {
+  const manager = new InMemoryPermissionManager()
+  const { response } = manager.createRequest({
+    sessionId: 'session-alpha',
+    toolCallId: 'call_timeout',
+    toolName: 'send_message',
+    input: {},
+    ttlMs: 5,
+  })
+
+  const decision = await response
+
+  assert.equal(decision.toolCallId, 'call_timeout')
+  assert.equal(decision.decision, 'deny')
+  assert.equal(decision.reason, 'Permission request timed out')
+})
+
+test('returns an error when model tool calls exceed maxTurns', async () => {
+  const provider = {
+    requests: [],
+    async *streamChat(request) {
+      this.requests.push(request)
+      yield {
+        type: 'tool_call_delta',
+        index: 0,
+        id: `call_${this.requests.length}`,
+        name: 'missing_tool',
+        argumentsDelta: '{}',
+      }
+      yield { type: 'finish', reason: 'tool_calls' }
+    },
+  }
+  const engine = new AgentEngine({
+    modelProvider: provider,
+    sessionStore: new InMemorySessionStore(),
+    permissionManager: new InMemoryPermissionManager(),
+    tools: [],
+    maxTurns: 2,
+  })
+
+  const events = []
+  for await (const event of engine.submitUserMessage({
+    sessionId: 'loop-session',
+    text: 'loop',
+  })) {
+    events.push(event)
+  }
+
+  const last = events.findLast(event => event.type !== 'turn_stage')
+  assert.equal(last.type, 'error')
+  assert.match(last.error, /Reached maximum number of turns/)
+  assert.equal(provider.requests.length, 2)
+})
+
+test('returns an error when a turn times out', async () => {
+  const provider = {
+    async *streamChat(request) {
+      await new Promise(resolve => {
+        request.signal.addEventListener('abort', resolve, { once: true })
+      })
+      yield { type: 'assistant_delta', text: 'late' }
+    },
+  }
+  const engine = new AgentEngine({
+    modelProvider: provider,
+    sessionStore: new InMemorySessionStore(),
+    permissionManager: new InMemoryPermissionManager(),
+    tools: [],
+    turnTimeoutMs: 5,
+  })
+
+  const events = []
+  for await (const event of engine.submitUserMessage({
+    sessionId: 'timeout-session',
+    text: 'slow',
+  })) {
+    events.push(event)
+  }
+
+  const last = events.findLast(event => event.type !== 'turn_stage')
+  assert.equal(last.type, 'error')
+  assert.equal(last.error, 'Agent turn timed out')
+})
+
+test('built-in chat tools read recent messages and active memories without permission', async () => {
+  const store = new InMemorySessionStore()
+  await store.appendPlatformMessage({
+    sessionId: 'qq-group:1000',
+    messageId: 'm1',
+    senderId: '42',
+    text: '第一条',
+    timestamp: '2026-05-27T12:00:00.000Z',
+    metadata: {},
+  })
+  const memory = await store.appendMemoryCandidate({
+    sessionId: 'qq-group:1000',
+    scope: 'session',
+    subjectId: 'qq-group:1000',
+    summary: '本群喜欢晚上九点开黑',
+    evidenceMessageIds: ['m1'],
+    confidence: 0.9,
+  })
+  await store.activateMemoryCandidate(memory.id)
+  const recentTool = createRecentMessagesTool({ sessionStore: store })
+  const memoryTool = createActiveMemoriesTool({ sessionStore: store })
+
+  const recent = await recentTool.call({ limit: 3 }, { sessionId: 'qq-group:1000' })
+  const memories = await memoryTool.call({}, { sessionId: 'qq-group:1000', senderId: '42' })
+
+  assert.equal(recent.messages[0].text, '第一条')
+  assert.equal(memories.memories[0].summary, '本群喜欢晚上九点开黑')
+  assert.equal(recentTool.readOnly, true)
+  assert.equal(memoryTool.requiresPermission, false)
+})
+
+test('context engine prioritizes sender messages and keeps the current trigger at the end', async () => {
+  const store = new InMemorySessionStore()
+  for (let i = 1; i <= 8; i += 1) {
+    await store.appendPlatformMessage({
+      sessionId: 'qq-group:1000',
+      messageId: `m${i}`,
+      senderId: i === 1 ? '42' : `u${i}`,
+      text: `消息 ${i}`,
+      timestamp: `2026-05-27T12:0${i}:00.000Z`,
+      metadata: {},
+    })
+  }
+  await store.appendPlatformMessage({
+    sessionId: 'qq-group:1000',
+    messageId: 'm9',
+    senderId: '42',
+    text: '#agent 现在总结',
+    timestamp: '2026-05-27T12:09:00.000Z',
+    metadata: {},
+  })
+  const contextEngine = new ContextEngine({
+    sessionStore: store,
+    recentMessageLimit: 3,
+    senderContextLimit: 2,
+  })
+
+  const { messages } = await contextEngine.build({
+    sessionId: 'qq-group:1000',
+    systemPrompt: 'system',
+    text: '现在总结',
+    senderId: '42',
+    messageId: 'm9',
+  })
+  const raw = messages.find(message => message.content.startsWith('Recent raw chat messages'))
+
+  assert.match(raw.content, /消息 1/)
+  assert.match(raw.content, /消息 7/)
+  assert.match(raw.content, /消息 8/)
+  assert.match(raw.content, /#agent 现在总结/)
+  assert.ok(raw.content.lastIndexOf('#agent 现在总结') > raw.content.lastIndexOf('消息 8'))
+  assert.equal(messages.at(-1).content, '现在总结')
 })
