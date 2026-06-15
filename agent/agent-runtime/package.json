@@ -1,5 +1,5 @@
 {
-  "name": "@claudecode/agent-runtime",
+  "name": "xq/agent-runtime",
   "version": "0.1.0",
   "type": "module",
   "exports": {
