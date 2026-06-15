@@ -74,6 +74,7 @@ async def handle_agent_event(
     *,
     authorizer_id,
     auto_decision=None,
+    tools=None,
 ):
     event_type = event.get("type")
     if event_type == "assistant_delta":
@@ -113,6 +114,9 @@ async def handle_agent_event(
                 }
             )
         return None
+    if event_type == "tool_request":
+        await _handle_tool_request(connection, event, tools)
+        return None
     if event_type == "error":
         await bot.send_private_msg(
             user_id=str(authorizer_id),
@@ -120,6 +124,30 @@ async def handle_agent_event(
         )
         return None
     return None
+
+
+async def _handle_tool_request(connection, event, tools):
+    response = {
+        "type": "tool_result",
+        "requestId": event.get("requestId"),
+        "sessionId": event.get("sessionId"),
+        "toolCallId": event.get("toolCallId"),
+    }
+    try:
+        if tools is None:
+            raise RuntimeError("No tool executor is configured")
+        result = await tools.call(
+            event.get("toolName"),
+            event.get("input") or {},
+            event.get("context") or {},
+        )
+        response.update({"ok": True, "result": result})
+    except Exception as error:
+        response.update({"ok": False, "error": str(error)})
+
+    send_result = connection.send_json(response)
+    if hasattr(send_result, "__await__"):
+        await send_result
 
 
 def strip_agent_prefix(text, prefix="#agent"):

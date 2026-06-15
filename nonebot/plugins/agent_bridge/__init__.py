@@ -8,6 +8,7 @@ from nonebot.adapters.onebot.v11 import Bot, MessageEvent
 from adapter import (
     AgentConnection,
     GatewayWebSocketClient,
+    NapCatTools,
     gateway_message_from_event,
     handle_agent_event,
 )
@@ -75,6 +76,7 @@ async def start_agent_gateway_client() -> None:
                 event,
                 authorizer_id=AGENT_AUTHOR_QQ,
                 auto_decision=AGENT_AUTO_PERMISSION,
+                tools=NapCatTools(bot),
             )
         except Exception as error:
             logger.exception(f"Failed to handle agent event {event}: {error}")

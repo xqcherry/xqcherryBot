@@ -13,9 +13,7 @@ class NapCatTools:
         self.bot = bot
         self._tools = {
             "get_recent_messages": ToolDescriptor(
-                "get_recent_messages",
-                "Read recent messages from the current chat.",
-                True,
+                "get_recent_messages", "Read recent messages from the current chat.", True,
             ),
             "get_group_info": ToolDescriptor(
                 "get_group_info", "Read current group profile information.", True
@@ -51,6 +49,7 @@ class NapCatTools:
     async def _get_recent_messages(self, input_data, context):
         target = _target_from(input_data, context)
         limit = int(input_data.get("limit", 20))
+        _require_message_type(target)
         if target["messageType"] != "group":
             return {"messages": []}
         return await self.bot.get_group_msg_history(
@@ -61,31 +60,40 @@ class NapCatTools:
     async def _get_group_info(self, input_data, context):
         target = _target_from(input_data, context)
         group_id = input_data.get("groupId") or target.get("groupId")
+        _require_non_empty(group_id, "groupId")
         return await self.bot.get_group_info(group_id=str(group_id))
 
     async def _get_user_info(self, input_data, context):
         target = _target_from(input_data, context)
         user_id = input_data.get("userId") or target.get("userId")
+        _require_non_empty(user_id, "userId")
         return await self.bot.get_stranger_info(user_id=str(user_id))
 
     async def _send_message(self, input_data, context):
         target = _target_from(input_data, context)
-        text = input_data["text"]
+        text = _require_non_empty(input_data.get("text"), "text")
+        message_type = _require_message_type(target)
         if target["messageType"] == "group":
+            _require_non_empty(target.get("groupId"), "groupId")
             return await self.bot.send_group_msg(
                 group_id=str(target["groupId"]), message=text
             )
+        _require_non_empty(target.get("userId"), "userId")
         return await self.bot.send_private_msg(user_id=str(target["userId"]), message=text)
 
     async def _reply_message(self, input_data, context):
         target = _target_from(input_data, context)
-        text = input_data["text"]
+        text = _require_non_empty(input_data.get("text"), "text")
+        message_type = _require_message_type(target)
         message_id = input_data.get("messageId") or target["messageId"]
+        _require_non_empty(message_id, "messageId")
         reply_text = f"[CQ:reply,id={message_id}]{text}"
-        if target["messageType"] == "group":
+        if message_type == "group":
+            _require_non_empty(target.get("groupId"), "groupId")
             return await self.bot.send_group_msg(
                 group_id=str(target["groupId"]), message=reply_text
             )
+        _require_non_empty(target.get("userId"), "userId")
         return await self.bot.send_private_msg(
             user_id=str(target["userId"]), message=reply_text
         )
@@ -108,3 +116,16 @@ def _target_from(input_data, context):
         "userId": input_data.get("userId") or metadata.get("userId"),
         "messageId": input_data.get("messageId") or metadata.get("messageId"),
     }
+
+
+def _require_non_empty(value, name):
+    if value is None or value == "":
+        raise ValueError(f"{name} is required")
+    return value
+
+
+def _require_message_type(target):
+    message_type = target.get("messageType")
+    if message_type not in {"group", "private"}:
+        raise ValueError(f"Unsupported messageType: {message_type}")
+    return message_type
