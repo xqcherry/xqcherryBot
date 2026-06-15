@@ -1,5 +1,5 @@
 {
-  "name": "@claudecode/agent-server",
+  "name": "@xq/agent-server",
   "version": "0.1.0",
   "type": "module",
   "exports": {
