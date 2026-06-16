@@ -72,9 +72,72 @@ export class FilePersonaProvider {
   }
 }
 
+export class DatabasePersonaProvider {
+  constructor({
+    personaStore = null,
+    fallbackProvider = null,
+    promptManager = null,
+  } = {}) {
+    this.personaStore = personaStore
+    this.fallbackProvider = fallbackProvider
+    this.promptManager = promptManager
+  }
+
+  async resolve({ sessionId = null, senderId = null, metadata = {} } = {}) {
+    const config = this.personaStore?.getCurrentPersonaConfig?.()
+    const persona = resolveFromConfig(config, { sessionId, senderId })
+    if (persona) return persona
+    if (this.fallbackProvider?.resolve) {
+      const fallback = await this.fallbackProvider.resolve({ sessionId, senderId, metadata })
+      if (fallback?.content?.trim()) return fallback
+    }
+
+    const chatPersona = await this.promptManager?.getPrompt?.('CHAT_PERSONA')
+    if (chatPersona?.systemPrompt?.trim()) {
+      return {
+        source: 'chat_persona',
+        personaKey: 'CHAT_PERSONA',
+        name: chatPersona.name ?? 'Chat Persona',
+        content: chatPersona.systemPrompt,
+        description: chatPersona.description ?? '',
+      }
+    }
+
+    return {
+      source: 'fallback',
+      personaKey: 'CHAT_PERSONA',
+      name: 'Chat Persona',
+      content: '',
+      description: '',
+    }
+  }
+}
+
 function resolveBoundPersona(binding, personas, source) {
   if (!binding) return null
   return personaToResult(personas.get(binding.personaKey), source)
+}
+
+function resolveFromConfig(config, { sessionId, senderId } = {}) {
+  if (!config) return null
+  const personas = new Map((config.personas ?? []).map(persona => [persona.personaKey, persona]))
+  const bindings = config.bindings ?? []
+
+  const userBinding = senderId
+    ? bindings.find(binding => binding.scope === 'user' && binding.subjectId === senderId)
+    : null
+  const userPersona = resolveBoundPersona(userBinding, personas, 'user_binding')
+  if (userPersona) return userPersona
+
+  const sessionBinding = sessionId
+    ? bindings.find(binding => binding.scope === 'session' && binding.subjectId === sessionId)
+    : null
+  const sessionPersona = resolveBoundPersona(sessionBinding, personas, 'session_binding')
+  if (sessionPersona) return sessionPersona
+
+  return config.defaultPersonaKey
+    ? personaToResult(personas.get(config.defaultPersonaKey), 'default_persona')
+    : null
 }
 
 function personaToResult(persona, source) {

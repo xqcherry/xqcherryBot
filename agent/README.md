@@ -51,6 +51,14 @@ Prompt 同步会读取 `config/prompts/current.json` 里的生产导出快照：
 node scripts/apply-prompts.mjs --db ./data/agent-gateway.sqlite --file ./config/prompts/current.json
 ```
 
+Persona 同步同样写入本地 SQLite，会读取 `config/personas/current.json`：
+
+```bash
+node scripts/apply-personas.mjs --db ./data/agent-gateway.sqlite --file ./config/personas/current.json
+```
+
+`apply-prompts.mjs`、`apply-personas.mjs` 和 gateway 运行时必须使用同一个数据库路径。否则可能出现 prompt/persona 导入到一个库，而 gateway 读取另一个库的情况。
+
 生产环境如果希望启动更严格，可以设置：
 
 ```env

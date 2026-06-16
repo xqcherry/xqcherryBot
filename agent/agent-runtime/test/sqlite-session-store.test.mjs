@@ -224,6 +224,10 @@ test('SQLite store records file-based schema migrations', async () => {
       version: 3,
       name: 'V003__prompt_templates.sql',
     },
+    {
+      version: 4,
+      name: 'V004__persona_templates.sql',
+    },
   ])
   store.close()
 })

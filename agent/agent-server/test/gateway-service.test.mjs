@@ -5,7 +5,11 @@ import { join } from 'node:path'
 import test from 'node:test'
 
 import { createGatewayFromEnv } from '../src/index.mjs'
-import { CHAT_PERSONA_PROMPT_KEY, PromptTemplateStore } from '../../agent-runtime/src/index.mjs'
+import {
+  CHAT_PERSONA_PROMPT_KEY,
+  PersonaTemplateStore,
+  PromptTemplateStore,
+} from '../../agent-runtime/src/index.mjs'
 
 test('creates a configured gateway from environment values', async () => {
   const dir = await mkdtemp(join(tmpdir(), 'agent-gateway-'))
@@ -176,6 +180,42 @@ test('gateway health exposes database CHAT_PERSONA prompt status', async () => {
     importedAt: '2026-06-15T01:05:00.000Z',
     name: 'Chat Persona',
   })
+  gateway.close()
+})
+
+test('gateway factory reads personas from SQLite before file fallback', async () => {
+  const dir = await mkdtemp(join(tmpdir(), 'agent-gateway-'))
+  const dbPath = join(dir, 'gateway.sqlite')
+
+  const gateway = createGatewayFromEnv({
+    AGENT_GATEWAY_DB: dbPath,
+    AGENT_MODEL_PROVIDER: 'openai-compatible',
+    OPENAI_BASE_URL: 'https://api.deepseek.com',
+    OPENAI_API_KEY: 'test-key',
+    OPENAI_MODEL: 'deepseek-v4-flash',
+  })
+  const personaStore = new PersonaTemplateStore({ adapter: gateway.sessionStore.adapter })
+  await personaStore.upsertPublishedPersonaConfig({
+    exportedAt: '2026-06-15T00:00:00.000Z',
+    defaultPersonaKey: 'database_friend',
+    personas: [
+      {
+        personaKey: 'database_friend',
+        name: 'Database Friend',
+        description: '',
+        content: 'database persona',
+        sourceVersionNo: 1,
+        sourcePublishedAt: '2026-06-15T00:00:00.000Z',
+      },
+    ],
+    bindings: [],
+  })
+
+  const persona = await gateway.engine.contextEngine.personaProvider.resolve({})
+
+  assert.equal(persona.source, 'default_persona')
+  assert.equal(persona.personaKey, 'database_friend')
+  assert.equal(persona.content, 'database persona')
   gateway.close()
 })
 

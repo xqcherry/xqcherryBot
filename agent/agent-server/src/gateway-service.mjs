@@ -20,6 +20,8 @@ import {
   createSearchChatHistoryTool,
   PromptTemplateStore,
   PromptManager,
+  PersonaTemplateStore,
+  DatabasePersonaProvider,
   FilePersonaProvider,
   fallbackChatPersona,
 } from '../../agent-runtime/src/index.mjs'
@@ -74,10 +76,20 @@ export function createGatewayFromEnv(
     promptStore: promptTemplateStore,
     fallbackPrompts: createChatPromptFallbacks(),
   })
-  const personaProvider = new FilePersonaProvider({
+  const filePersonaProvider = new FilePersonaProvider({
     filePath: env.AGENT_PERSONAS_FILE ?? DEFAULT_PERSONAS_FILE,
     promptManager,
   })
+  const personaTemplateStore = sessionStore.adapter
+    ? new PersonaTemplateStore({ adapter: sessionStore.adapter })
+    : null
+  const personaProvider = personaTemplateStore
+    ? new DatabasePersonaProvider({
+        personaStore: personaTemplateStore,
+        fallbackProvider: filePersonaProvider,
+        promptManager,
+      })
+    : filePersonaProvider
   validatePromptFallbackMode(env, promptTemplateStore, logger)
   const provider = createModelProviderFromEnv(env, { fetchImpl })
   const summarizer = createSummarizerFromEnv(env, { fetchImpl })

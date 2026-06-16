@@ -45,7 +45,14 @@ export {
   normalizePromptExport,
 } from './runtime/prompt/promptTemplateStore.mjs'
 export { PromptManager } from './runtime/prompt/promptManager.mjs'
-export { FilePersonaProvider } from './runtime/persona/personaProvider.mjs'
+export {
+  DatabasePersonaProvider,
+  FilePersonaProvider,
+} from './runtime/persona/personaProvider.mjs'
+export {
+  PersonaTemplateStore,
+  normalizePersonaExport,
+} from './runtime/persona/personaTemplateStore.mjs'
 export {
   SkillProvider,
   skillToBlock,
