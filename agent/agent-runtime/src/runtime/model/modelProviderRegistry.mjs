@@ -79,6 +79,7 @@ export const openAICompatibleRegistryEntry = {
       baseUrl: requireEnv(env, 'OPENAI_BASE_URL'),
       apiKey: resolveOpenAICompatibleApiKey(env),
       model: requireEnv(env, 'OPENAI_MODEL'),
+      thinking: env.AGENT_MODEL_THINKING ?? 'disabled',
       fetchImpl,
     })
   },

@@ -29,6 +29,67 @@ function providerWithFetch(fetchImpl) {
   })
 }
 
+test('OpenAI-compatible provider disables model thinking by default', async () => {
+  const requests = []
+  const provider = providerWithFetch(async (_url, request) => {
+    requests.push(JSON.parse(request.body))
+    return {
+      ok: true,
+      body: [new TextEncoder().encode('data: [DONE]\n\n')],
+    }
+  })
+
+  await collect(provider)
+
+  assert.deepEqual(requests[0].thinking, { type: 'disabled' })
+})
+
+test('OpenAI-compatible provider can enable model thinking explicitly', async () => {
+  const requests = []
+  const provider = new OpenAICompatibleProvider({
+    baseUrl: 'https://model.example/v1',
+    apiKey: 'key',
+    model: 'test-model',
+    thinking: 'enabled',
+    fetchImpl: async (_url, request) => {
+      requests.push(JSON.parse(request.body))
+      return {
+        ok: true,
+        body: [new TextEncoder().encode('data: [DONE]\n\n')],
+      }
+    },
+  })
+
+  await collect(provider)
+
+  assert.deepEqual(requests[0].thinking, { type: 'enabled' })
+})
+
+test('model provider factory passes model thinking env to OpenAI-compatible provider', async () => {
+  const requests = []
+  const provider = createModelProviderFromEnv(
+    {
+      OPENAI_BASE_URL: 'https://model.example/v1',
+      OPENAI_MODEL: 'chat-model',
+      OPENAI_API_KEY: 'key',
+      AGENT_MODEL_THINKING: 'enabled',
+    },
+    {
+      fetchImpl: async (_url, request) => {
+        requests.push(JSON.parse(request.body))
+        return {
+          ok: true,
+          body: [new TextEncoder().encode('data: [DONE]\n\n')],
+        }
+      },
+    },
+  )
+
+  await collect(provider)
+
+  assert.deepEqual(requests[0].thinking, { type: 'enabled' })
+})
+
 test('classifies OpenAI-compatible HTTP errors with stable model error codes', async () => {
   for (const [status, code] of [
     [401, 'model_auth_failed'],

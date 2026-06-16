@@ -5,6 +5,7 @@ export class OpenAICompatibleProvider extends ModelProvider {
     baseUrl,
     apiKey,
     model,
+    thinking = 'disabled',
     fetchImpl = globalThis.fetch,
     headers = {},
   }) {
@@ -13,6 +14,7 @@ export class OpenAICompatibleProvider extends ModelProvider {
     this.baseUrl = baseUrl.replace(/\/$/, '')
     this.apiKey = apiKey
     this.model = model
+    this.thinking = normalizeThinking(thinking)
     this.fetchImpl = fetchImpl
     this.headers = headers
   }
@@ -30,6 +32,7 @@ export class OpenAICompatibleProvider extends ModelProvider {
         body: JSON.stringify({
           model: this.model,
           stream: true,
+          thinking: { type: this.thinking },
           messages: request.messages,
           tools: request.tools,
         }),
@@ -61,6 +64,12 @@ export class OpenAICompatibleProvider extends ModelProvider {
       yield modelError('model_response_parse_failed', error)
     }
   }
+}
+
+function normalizeThinking(value) {
+  const normalized = String(value ?? 'disabled').trim().toLowerCase()
+  if (normalized === 'enabled' || normalized === 'disabled') return normalized
+  throw new Error(`Unsupported model thinking mode: ${value}`)
 }
 
 export class OpenAICompatibleSummarizer extends ModelSummarizer {

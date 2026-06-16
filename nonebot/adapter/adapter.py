@@ -1,6 +1,11 @@
 from datetime import datetime, timezone
 import json
 import asyncio
+import logging
+import re
+
+
+logger = logging.getLogger(__name__)
 
 
 class AgentConnection:
@@ -80,23 +85,31 @@ async def handle_agent_event(
     if event_type == "assistant_delta":
         return None
     if event_type == "final_result":
-        result = event.get("result", "")
+        result = str(event.get("result", ""))
+        messages = split_outbound_messages(result)
+        if not messages:
+            logger.warning(
+                "Skip empty agent final_result: session=%s reply_to=%s",
+                event.get("sessionId", ""),
+                event.get("replyToMessageId", ""),
+            )
+            return None
         session_id = event.get("sessionId", "")
         metadata = event.get("metadata") or {}
         if session_id.startswith("qq-group:"):
-            await bot.send_group_msg(
-                group_id=session_id.removeprefix("qq-group:"),
-                message=result,
-            )
+            group_id = session_id.removeprefix("qq-group:")
+            for message in messages:
+                await bot.send_group_msg(group_id=group_id, message=message)
         elif session_id.startswith("qq-user:"):
-            await bot.send_private_msg(
-                user_id=session_id.removeprefix("qq-user:"),
-                message=result,
-            )
+            user_id = session_id.removeprefix("qq-user:")
+            for message in messages:
+                await bot.send_private_msg(user_id=user_id, message=message)
         elif metadata.get("messageType") == "group":
-            await bot.send_group_msg(group_id=metadata["groupId"], message=result)
+            for message in messages:
+                await bot.send_group_msg(group_id=metadata["groupId"], message=message)
         elif metadata.get("messageType") == "private":
-            await bot.send_private_msg(user_id=metadata["userId"], message=result)
+            for message in messages:
+                await bot.send_private_msg(user_id=metadata["userId"], message=message)
         return None
     if event_type == "permission_request":
         await bot.send_private_msg(
@@ -156,6 +169,12 @@ def strip_agent_prefix(text, prefix="#agent"):
     if text.startswith(prefix):
         return text[len(prefix) :].lstrip()
     return text
+
+
+def split_outbound_messages(text):
+    if not isinstance(text, str):
+        return []
+    return [part.strip() for part in re.split(r"(?:\r?\n\s*){2,}", text) if part.strip()]
 
 
 def timestamp_from_event(event):
