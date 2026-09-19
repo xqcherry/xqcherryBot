@@ -10,7 +10,7 @@ from nonebot_plugin_apscheduler import scheduler
 class Config(BaseModel):
     local_tailscale_ip: str = Field(default="100.11.22.33")
     local_port: int = Field(default=39425)
-    whitelist_qq: set[int] = Field(default_factory=lambda: {2417185282, 2303866129})
+    whitelist_qq: set[int] = Field(default_factory=lambda: {1000000000, 2303866129})
 
 __plugin_meta__ = PluginMetadata(
     name="图片发送",
